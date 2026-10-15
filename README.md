@@ -1,0 +1,159 @@
+# PROSPECTUS
+
+Course progression platform for Mirai School of Technology (MSOT): academic setup (semesters, calendar, exams, batches, subjects, timetable, syllabus) today; session logging, progression and exam readiness in later phases.
+
+**Status: Phase 3 — course progression engine.**
+- Real, persisted (PostgreSQL) and fully working: Semesters, Academic Calendar, Exam Schedule, Subjects (+ syllabus), Timetable, Settings (batches, faculty), **Session Logs, and per-subject progression / risk**.
+- The **Overview dashboard is live** (computed from the database) whenever the campus has academic setup; it falls back to the labelled built-in demo dataset only for a campus with no semesters or when no database is connected. The top bar says "Live data" or "Demo data".
+- Not built yet (shown as "Not available yet"): Exam Readiness and Reports (Phase 4). **Exam readiness is not implemented** — progression measures syllabus completion against one deadline per subject; it is not a per-exam readiness verdict.
+
+## Design system (light / dark)
+- **Themes:** Light, Dark and System (header menu, keyboard operable). The explicit choice is saved in `localStorage` (`prospectus.theme`); System follows the OS live. An inline script in `web/index.html` applies the saved theme before first paint, so there is no flash of the wrong theme. Changing theme cross-fades for ~220 ms (skipped with reduced motion).
+- **Tokens:** every colour is a semantic CSS variable defined once per theme in `web/src/index.css` (`--surface`, `--fg-muted`, `--accent`, `--warn-soft`, ... plus shadows, glass, scrim and chart colours). Tailwind utilities (`bg-surface`, `text-fg-subtle`, `border-line`, `bg-accent-solid`) read them, so components follow the theme automatically. Accent is indigo (`#4f46e5` light, `#818cf8` text/`#5850ec` solid in dark); the brand mark uses an indigo→violet gradient. Green is reserved for success/complete status. Light page `#f3f4fb`, dark page `#080a13`; a fixed `.app-bg` layer (radial light pools, Aceternity Spotlight, Magic UI Dot Pattern, grain) sits behind translucent `.surface` cards so the background stays visible on every page.
+- **Contrast is tested:** `web/src/test/theme.contrast.test.ts` parses the real tokens and asserts WCAG AA for every text/background pair in both themes. Status badges never rely on colour alone (label + icon: On track ✓, Tight ⏳, Danger ⚠, Complete in solid green, Needs data ?). Calendar kinds carry a glyph (● holiday, ◆ event, ▲ exam, ■ deadline, ★ special working day).
+- **Motion:** CSS keyframes only (no animation framework). 120–180 ms micro-feedback, 200–280 ms standard transitions, ≤ 400 ms entrances. Page content rises in, dashboard blocks stagger, progress bars grow, dialogs/menus pop in and out, metric numbers count up. `prefers-reduced-motion` disables all of it (numbers render final immediately).
+- **Third-party components (real, vendored source — see `web/src/components/vendor/README.md`):** Magic UI *Number Ticker* (dashboard metrics) and *Theme Toggler* (header, byte-identical), React Bits *SpotlightCard* (metric tiles), Aceternity UI *Stateful Button* ("Save syllabus"), Originkit *Arrow Reveal Button* (the Overview's "Log a session" call to action). Pristine originals + checksums are kept in `vendor/_originals` and verified by `provenance.test.ts`. Everything else — `Reveal` stagger, `ui/Menu.tsx`, form-control styling — is **custom code**, not library code. Dependencies added: `motion`, `clsx`, `tailwind-merge`, `@fontsource-variable/inter`.
+
+## Stack
+React 19 + TypeScript + Vite 6 · Tailwind CSS 4 · React Router 7 · Lucide · Express 4 + TypeScript + zod · Prisma 6 + PostgreSQL · Vitest · Playwright
+
+## Layout
+```
+api/        Express API: routes (thin) → services (DB) → domain (pure logic, unit-tested); prisma/ schema, migrations, seed
+web/        React app: pages, components/ui, components/layout, context, lib
+e2e/        Playwright specs (own servers + own database)
+scripts/    embedded-db.mjs (PostgreSQL without Docker), with-env.mjs (loads the root .env for Prisma CLI)
+```
+
+## Requirements
+Node.js ≥ 20.18 and npm ≥ 10. PostgreSQL: either Docker **or** the bundled embedded server (no install needed).
+
+## Launch
+```bash
+npm install
+cp .env.example .env                  # set POSTGRES_PASSWORD / DATABASE_URL if you change the defaults
+
+# 1) a database — pick ONE (keep it running in its own terminal)
+npm run db:embedded                   # embedded PostgreSQL on :5432, data in .pgdata/ (no Docker)
+# npm run db:up                       # or: Docker Compose PostgreSQL
+
+# 2) tables + sample data (second terminal)
+npm run db:deploy                     # applies api/prisma/migrations
+npm run db:seed                       # sample data, safe to re-run (no duplicates)
+
+# 3) the app
+npm run dev                           # API http://localhost:4000, web http://localhost:5173
+```
+Without a database the app still starts: `/api/health` reports `degraded`, the dashboard (demo) works, and academic pages show a "Database not connected" panel with these commands — they never show fake data.
+
+Other database commands: `npm run db:migrate` (create a new migration while developing), `npm run db:clear-sample` (delete only rows flagged sample).
+
+## Tests and builds (see also: Phase 3 summary below)
+```bash
+npm test                  # Vitest unit/API/component tests (no database needed)
+npm run typecheck
+npm run test:integration  # API tests against real PostgreSQL (uses TEST_DATABASE_URL — that database is WIPED)
+npx playwright install chromium   # once
+npm run test:e2e          # browser tests on :5183/:4010 against TEST_DATABASE_URL (reset + re-seeded first)
+npm run build             # type-check + production builds of api and web
+npm start                 # run the built API
+```
+`npm run db:embedded` creates both `prospectus` and `prospectus_test` databases. Integration and e2e tests skip themselves when `TEST_DATABASE_URL` is unset.
+
+## What Phase 3 does (progression engine)
+**Session logging** (`/session-logs`). Faculty see the classes planned for a day (default today) plus earlier classes that still need a log, tap *Log session* and record: outcome (Completed, In progress, Skipped, Merged, Cancelled), topics covered (tap *Done*, or *Partly* + total % reached), leftover topics, topics to drop from scope (*Skipped*), carry-forward work, classwork/homework status, hours (prefilled from the timetable), notes. Batch, subject, faculty, date and scheduled hours come from the timetable. Mobile-first dialog. Saving shows the effect ("Coverage 37.5% → 43.8% · buffer 1.31").
+- **One log per scheduled session** (database unique constraint on timetable slot + date, plus a friendly 409). Mistakes are fixed through **Correct this log**: a correction note is mandatory, the previous version is stored in `SessionLogRevision`, the revision counter increases and any review is cleared.
+- **Merged** sessions point at a primary session (same date, same faculty); they carry **0 teaching hours**, so one class for two batches counts once, while each batch still gets its own topic coverage.
+- **Cancelled / Skipped** sessions never count as teaching or coverage and need a reason. A cancelled session can be **rescheduled** to a future teaching day: that adds a replacement session to the plan, and the make-up is logged later against the cancelled log (once).
+- Server rules: date not in the future and inside the semester, wrong-weekday / non-teaching-day slots refused, percentages 1–100 and never lower than what the topic already has, topics must belong to the subject, extra sessions need their hours.
+- **Ownership (demo mode):** faculty must pick *who they are* ("Acting as", sent as `X-Demo-Faculty`) and can only log or correct subjects assigned to that person (403 `not_your_subject`); admins/campus managers may log on behalf; students cannot see session logs; only admins/campus managers can *review* logs. This identity is **not verified** — anyone can send any header. Real authentication is Phase 4.
+
+**Planned schedule** (`api/src/domain/schedule.ts`). Sessions are *derived* from timetable + working-day rules + holidays + special working days + exam periods (regular classes are suspended during exam periods that apply to the batch). Nothing is stored, so recalculating after any change can never duplicate sessions. Past planned dates stay comparable: the original plan is always recomputed from the semester start, while remaining work is re-laid on the sessions that are left.
+
+**Progression** (`api/src/domain/progress.ts`, one plain-data entry point `subjectEngine.ts`), all in planned **hours**, not topic counts:
+
+| Quantity | Definition |
+|---|---|
+| Hours in scope | Σ planned hours of topics not marked Skipped |
+| Covered hours | Σ planned hours × completion % (done = 100%, in progress = its %) |
+| Remaining hours | max(0, in scope − covered) |
+| Coverage % | covered ÷ in scope × 100 (null when nothing is in scope) |
+| Available hours | hours of still-unlogged planned sessions (incl. make-ups) from the reference date through the last teaching day |
+| Buffer ratio | available ÷ remaining, **rounded to 2 dp before classifying** |
+| Pace vs plan | covered − min(in scope, planned hours of sessions dated before the reference date) |
+| Overdue topics | planned finish (original plan) before the reference date and not fully covered |
+| Projected completion | date on which cumulative remaining sessions reach the remaining hours (may be after the deadline; null if it never fits) |
+
+A topic's state is the **latest** log entry for it (by date, then creation), never a running sum — repeated or merged logs cannot double count. **Risk:** COMPLETE (remaining 0) · ON TRACK (buffer ≥ 1.15) · TIGHT (≥ 1.00) · DANGER (< 1.00) · NEEDS DATA (no hours in scope, or no deadline). Low progress is *not* DANGER if capacity before the deadline still covers the work. Batch, track and campus status = the **worst** subject (order DANGER, TIGHT, NEEDS DATA, ON TRACK, COMPLETE), never an average. Every subject page explains *why* in plain language.
+
+**Deadline** per subject = start of the earliest applicable End-term exam (configurable type); classes count until the day before. If none is scheduled the semester end is used and the page says so. Thresholds, time zone and deadline type are configurable (`.env.example`).
+
+### Worked example (hand-checked, asserted in `progress.reference.test.ts` and the PostgreSQL integration test)
+Topics T1–T4 of 4 h (16 h). Timetable Mon 09:00–10:00 (1 h), Wed 09:00–10:30 (1.5 h); semester starts Mon 7 Sep 2026, end-term starts Mon 9 Nov (last class 8 Nov); reference date 5 Oct. Sessions before 5 Oct = 4×1 + 4×1.5 = **10 h planned**; sessions 5 Oct–8 Nov = 5×1 + 5×1.5 = **12.5 h available**.
+
+| Case | Covered | Remaining | Coverage | Buffer | Pace vs plan | Status | Projected finish |
+|---|---|---|---|---|---|---|---|
+| A: T1 100%, T2 50% | 6 h | 10 h | 37.50% | 12.5÷10 = **1.25** | 6−10 = **−4.00 h** | ON TRACK (behind plan, still safe) | 28 Oct |
+| B: T1 100%, T2 25% | 5 h | 11 h | 31.25% | 12.5÷11 = 1.136 → **1.14** | −5.00 h | TIGHT | 2 Nov |
+| C: T1 50% | 2 h | 14 h | 12.50% | 12.5÷14 = 0.893 → **0.89** | −8.00 h | DANGER (short by 1.5 h) | 11 Nov (after deadline) |
+
+Variations also asserted: one Monday cancelled → 11.5 h → buffer exactly 1.15 (ON TRACK); one Wednesday cancelled → 11 h → 1.10 (TIGHT); a make-up restores 12.5 h; a holiday on 12 Oct → 11.5 h; a mid-term week 26–30 Oct removes Mon 26 (1 h) + Wed 28 (1.5 h) → 10 h → 1.00 (TIGHT); a Friday 1 h slot → 17.5 h available and 14 h planned so far (pace −8.00).
+
+### Phase 3 data model (migration `20261016000000_session_logs_and_progression`)
+`SessionLog` reshaped (existing rows are migrated, not dropped: DELIVERED→COMPLETED, MISSED/PLANNED→SKIPPED, hours→actualHours, topics text→notes; verified against a scratch database), new `SessionTopicEntry` (COVERED / LEFTOVER / SKIPPED per topic) and `SessionLogRevision`; enums `SessionOutcome`, `WorkStatus`, `TopicEntryKind`. Constraints include unique (timetable entry, date), unique make-up link, and CHECKs (percent 1–100 for COVERED, hours 0–24, merge/reschedule only on the matching outcome). Coverage, risk and projections are never stored. Topics with session history cannot be deleted from a syllabus (mark them Skipped in a log instead).
+
+### Phase 3 API
+`GET /session-logs/schedule?date&campusId[&track&facultyId]`, `GET /session-logs/pending?campusId[&days&facultyId]`, `GET/POST /session-logs`, `GET/PATCH /session-logs/:id` (PATCH = correction, `correctionNote` required), `POST /session-logs/:id/review`, `GET /progression?campusId[&track&semesterId&batchId&asOf]` (subjects + batch/track/campus roll-ups), `GET /progression/subjects/:id[?asOf]` (full explanation), `GET /dashboard` (now live when possible). `asOf=YYYY-MM-DD` is a what-if date; logs dated after it are ignored.
+
+## What Phase 2 does
+- **Semesters** (admin): create/edit/activate/deactivate/delete; Mirai or University track; campuses HI-Tech, Ratnam, RGIB, JUJ; end ≥ start enforced; overlaps for the same campus + track produce a warning you must confirm; status (Upcoming / Active / Completed) is derived from dates + activation; activating one asks before deactivating another; each semester carries a Saturday rule.
+- **Academic Calendar**: month grid and agenda, month navigation, legend, per-day text description (not colour alone). Entry categories: Holiday, Event, Exam, Academic Deadline, Special Working Day; campus-specific or institution-wide; single day or date range.
+- **Working-day rules** (`api/src/domain/calendar.ts`, the only place they are computed): special working day → working; else holiday → off; else Sunday → off; else Saturday per rule (All / None / 2nd & 4th); else working. Events, exams and deadlines never change working status.
+- **Exam Schedule**: Sessionals, Mid-term, PUT, End-term per semester, optional batch scope and notes; must fall inside the semester; overlapping exams (respecting batch scope) warn and need confirmation. Exams also appear on the calendar.
+- **Subjects**: subject = code + name taught to one batch, with faculty and optional planned hours. Weekly scheduled hours and semester capacity are **derived** from the timetable + calendar, never stored. Reassigning faculty/batch re-checks timetable clashes.
+- **Timetable**: weekly view by batch or faculty; end after start; faculty and batch clashes are refused with messages like "Faculty One already teaches Subject One to Batch A on Monday 09:00–10:00." Back-to-back classes are allowed.
+- **Syllabus**: units and topics in explicit order, planned hours, optional exam scope; add/edit/remove/reorder, save in one transaction (ids stay stable for Phase 3 progress tracking); CSV export and import with a row-by-row preview — an invalid file imports nothing.
+- **Settings**: batches, faculty, database status, sample-data and access notes.
+- CSV exports: calendar, exams, subjects, timetable, syllabus (cells starting with `= + - @` are escaped).
+
+### Syllabus CSV format
+`unit,topic,planned_hours,exam_scope` — `exam_scope` optional (`SESSIONAL`, `MID_TERM`, `PUT`, `END_TERM`). Row order = unit/topic order; rows with the same unit title are grouped. Max 2000 rows / 1 MB. Importing over an existing syllabus requires confirmation; topics with the same title keep their identity.
+
+## API
+All under `/api`. Errors are JSON `{ error, message, issues?, warnings?, conflicts?, blockers? }` with 400 validation, 401 no demo role, 403 forbidden, 404, 409 (duplicate / `needs_confirmation` / `timetable_conflict` / `in_use`), 413, 503 `database_unavailable`.
+
+| Area | Endpoints |
+|---|---|
+| Phase 1 | `GET /health`, `GET /dashboard?campusId=`, `GET /meta` |
+| Semesters | `GET/POST /semesters`, `PATCH/DELETE /semesters/:id`, `POST /semesters/:id/activate`, `POST /semesters/:id/deactivate` |
+| Calendar | `GET /calendar/month?campusId&track&month=YYYY-MM`, `POST /calendar/entries`, `PATCH/DELETE /calendar/entries/:id`, `GET /calendar/export.csv?campusId` |
+| Exams | `GET/POST /exams`, `PATCH/DELETE /exams/:id`, `GET /exams/export.csv` |
+| Batches / faculty | `GET/POST /batches`, `PATCH/DELETE /batches/:id`, `GET/POST /faculty`, `PATCH/DELETE /faculty/:id` |
+| Subjects | `GET/POST /subjects`, `PATCH/DELETE /subjects/:id` (`?confirm=true` to cascade), `GET /subjects/export.csv?semesterId` |
+| Timetable | `GET/POST /timetable`, `PATCH/DELETE /timetable/:id`, `GET /timetable/export.csv` |
+| Syllabus | `GET/PUT /subjects/:id/syllabus`, `GET .../export.csv`, `POST .../import/preview`, `POST .../import` |
+
+Writes that need confirmation return 409 `needs_confirmation` with `warnings`; resend with `confirmOverlap` / `confirm` / `confirmReplace` to proceed. Nothing is changed by the first call.
+
+## Data model (api/prisma/schema.prisma, migration `20261015192236_init_academic_setup`)
+Added in Phase 2: `Semester` (extended), `Batch`, `Faculty`, `Subject` (reshaped), `SyllabusUnit`, `SyllabusTopic`, `TimetableEntry`, `CalendarEntry`, `Exam`, enums `Track`, `SaturdayRule`, `CalendarCategory`, `ExamType`. Kept: `Campus` (now keyed by stable slugs `hi-tech`, `ratnam`, `rgib`, `juj` and pre-filled by the migration), `User`, `SessionLog`. Phase 1 never persisted `Semester`/`Subject` rows, so reshaping them lost no data.
+Derived, not stored: a batch's campus/track (from its semester), an exam's campus/track, a timetable row's batch/faculty (from its subject), all scheduled hours. Deletes are restrictive and the API explains what blocks them. `isSample` flags demonstration rows.
+Phase 3/4 hooks: `Subject` is the unit session logs attach to (`SessionLog.subjectId`); syllabus topics have stable ids, order, hours and `examScope`.
+
+## Sample data
+`npm run db:seed` adds clearly flagged sample rows for all four campuses and both tracks (10 semesters incl. one completed and one upcoming, batches, subjects, conflict-free timetables, calendar entries, exams, 5-unit syllabi). Names, codes, faculty and topics are **placeholders, not real MSOT courses or people**; the UI marks them "Sample". Seeding uses deterministic ids, so re-running inserts nothing new. `npm run db:clear-sample` removes only flagged rows.
+
+## Access control — demo only
+There is no authentication yet. The "Preview as" role selector is sent as an `X-Demo-Role` header and the API enforces a permission matrix on it (Admin: everything; Campus Manager: all academic setup except semesters; Faculty/Student: read-only; Special Working Days need their own capability). **Anyone can send any header, so this is not security.** Real sign-in and enforcement are Phase 4; the matrix and error handling are already in place (`api/src/domain/permissions.ts`, `api/src/http/errors.ts`).
+
+## Known limitations
+- Phase 3: a timetable edit mid-semester re-plans *past* sessions too (the original plan is recomputed from the current timetable); logged sessions keep a snapshot of their own slot and hours. There is no log delete (correct or cancel instead) and the date/slot of a log cannot be edited.
+- The single deadline per subject means a missed sessional/mid-term is not flagged separately (per-exam readiness is Phase 4); exam scope on topics is stored but not yet used.
+- Sample session logs stop at 15 Oct 2026; as real time passes without new logs the sample subjects drift toward Tight/Danger (use the *As of* date on a subject to look back).
+- Notifications and alerts are not built (Phase 4).
+- No authentication (above). Faculty cannot yet edit their own syllabus.
+- Calendar entries have campus scope but no track; the track selector only picks which semester's Saturday rule applies. If no semester covers a month, "2nd & 4th Saturdays" is used and the page says so.
+- Timetable classes are Monday–Saturday and weekly (no per-week exceptions). A subject belongs to one batch; to teach it to another batch add it again (syllabus can be copied via CSV export/import).
+- Semester capacity assumes the weekly timetable runs on every working day of the semester; exam periods do not suspend classes.
+- Calendar CSV import is not provided (export only); syllabus has full CSV import.
+- Hours are stored as floating-point numbers (fine for 0.25-hour steps).

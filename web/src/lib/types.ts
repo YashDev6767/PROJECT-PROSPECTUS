@@ -1,0 +1,114 @@
+// Mirrors the JSON returned by the API (api/src/routes/*).
+import type { Category, ExamType, SaturdayRule, Track } from "./labels";
+
+export type RiskLevel = "on_track" | "at_risk" | "critical";
+export type RiskStatus = "ON_TRACK" | "TIGHT" | "DANGER" | "COMPLETE" | "UNKNOWN";
+
+export interface Campus { id: string; name: string; city?: string }
+export interface SubjectRow {
+  id: string; code: string; name: string; faculty: string;
+  coveragePct: number; expectedPct: number; hoursBehind: number; risk: RiskLevel; daysToExam: number | null;
+  /** live rows only */ status?: RiskStatus; reason?: string; bufferRatio?: number | null; batchName?: string; track?: string; remainingHours?: number; availableHours?: number | null; deadline?: string;
+}
+export interface UpcomingExam { id: string; name: string; examDate: string; daysToExam: number | null; subtitle?: string; risk?: RiskLevel }
+export interface Dashboard {
+  /** "live" = computed from persisted timetable, logs and syllabus; "demo" = built-in sample numbers */
+  dataSource: "demo" | "live";
+  overall?: { status: RiskStatus | null; worstSubject: { id: string; name: string; batchName: string } | null; byTrack: Array<{ track: string; status: RiskStatus }> };
+  generatedAt: string;
+  campuses: Campus[];
+  context: { campus: Campus; semester: string; today: string };
+  metrics: { overallCoveragePct: number; hoursBehind: number; subjectsAtRisk: number; nextExamInDays: number | null };
+  schedule: Array<{ id: string; subject: string; code: string; start: string; end: string; room: string; state: "logged" | "needs_log" | "upcoming"; subjectId?: string; outcome?: string }>;
+  atRisk: SubjectRow[];
+  exams: UpcomingExam[];
+  recentSessions: Array<{ id: string; subject: string; code: string; faculty: string; hours: number; topics: string; date: string }>;
+}
+export interface Health {
+  status: "ok" | "degraded";
+  database: { state: "connected" | "not_configured" | "unreachable"; detail?: string; latencyMs?: number };
+}
+
+/* ---------- Phase 2: academic setup (mirrors the API serializers) ---------- */
+
+export interface Semester {
+  id: string; name: string; academicYear: string; track: Track; campusId: string; startsOn: string; endsOn: string;
+  saturdayRule: SaturdayRule; isActive: boolean; isSample: boolean; status: "upcoming" | "active" | "completed"; batchCount: number; examCount: number;
+}
+export interface CalendarEntry { id: string; title: string; category: Category; startsOn: string; endsOn: string; campusId: string | null; description: string | null; isSample: boolean }
+export interface CalendarExam { id: string; name: string; type: ExamType; startsOn: string; endsOn: string; batchName: string | null; isSample: boolean }
+export type DayReason = "weekday" | "saturday_working" | "saturday_off" | "sunday" | "holiday" | "special_working_day";
+export interface CalendarDay { date: string; weekday: number; working: boolean; reason: DayReason; entryIds: string[]; examIds: string[] }
+export interface MonthData {
+  month: string; campusId: string; track: Track; saturdayRule: SaturdayRule; ruleSource: "semester" | "default";
+  semester: { id: string; name: string; isActive: boolean } | null; days: CalendarDay[]; entries: CalendarEntry[]; exams: CalendarExam[];
+}
+export interface Exam {
+  id: string; name: string; type: ExamType; typeLabel: string; semesterId: string; semesterName: string; campusId: string; track: Track;
+  batchId: string | null; batchName: string | null; startsOn: string; endsOn: string; notes: string | null; isSample: boolean;
+}
+export interface Batch { id: string; name: string; semesterId: string; semesterName: string; campusId: string; campusName: string; track: Track; studentCount: number | null; subjectCount: number; examCount: number; isSample: boolean }
+export interface Faculty { id: string; name: string; email: string | null; campusId: string; campusName: string; isSample: boolean; subjectCount: number; weeklyHours: number }
+export interface Subject {
+  id: string; code: string; name: string; plannedHours: number | null; isSample: boolean; batchId: string; batchName: string;
+  semesterId: string; semesterName: string; campusId: string; track: Track; facultyId: string | null; facultyName: string | null;
+  weeklyScheduledHours: number; projectedSemesterHours: number; syllabusPlannedHours: number; topicCount: number;
+  progress: { risk: RiskStatus; headline: string; coveragePct: number | null; bufferRatio: number | null; remainingHours: number; availableHours: number | null; paceHours: number; overdueCount: number };
+}
+export interface TimetableEntry {
+  id: string; subjectId: string; subjectCode: string; subjectName: string; batchId: string; batchName: string; facultyId: string | null; facultyName: string | null;
+  weekday: number; weekdayName: string; startTime: string; endTime: string; room: string | null; hours: number; isSample: boolean;
+  nextDate?: string | null; loggedCount?: number; pastUnlogged?: number;
+}
+export interface SyllabusTopic { id?: string; title: string; plannedHours: number; examScope: ExamType | null }
+export interface SyllabusUnit { id?: string; title: string; topics: SyllabusTopic[] }
+export interface SyllabusPayload { subject: { id: string; code: string; name: string; batchName: string; plannedHours: number | null; isSample: boolean }; units: SyllabusUnit[]; totalPlannedHours: number }
+export interface ImportPreview { valid: boolean; rowCount: number; errors: Array<{ row: number; field: string; message: string }>; units: SyllabusUnit[]; totalPlannedHours: number; existingTopicCount: number }
+
+/* ---------- Phase 3: session logs and progression ---------- */
+export type Outcome = "COMPLETED" | "IN_PROGRESS" | "SKIPPED" | "MERGED" | "CANCELLED";
+export type WorkStatus = "NOT_GIVEN" | "GIVEN" | "REVIEWED";
+
+export interface ScheduleItem {
+  key: string; kind: "scheduled" | "makeup"; date: string; subjectId: string; subjectCode: string; subjectName: string; batchId: string; batchName: string;
+  semesterId: string; campusId: string; track: Track; facultyId: string | null; facultyName: string | null; entryId: string | null; makeupOfLogId: string | null;
+  startTime: string; endTime: string; hours: number; room: string | null; log: null | { id: string; outcome: Outcome; revision: number; reviewed: boolean };
+}
+export interface ScheduleResponse { date: string; today: string; items: ScheduleItem[]; notices: Array<{ date: string; campusId: string; semesterName: string; reason: string }> }
+
+export interface LoggedTopic { topicId: string; title: string; unitTitle: string; completionPct: number }
+export interface SessionLog {
+  id: string; subjectId: string; subjectCode: string; subjectName: string; batchId: string; batchName: string; semesterId: string; campusId: string; track: Track;
+  facultyId: string | null; facultyName: string | null; timetableEntryId: string | null; makeupOfId: string | null; mergedIntoId: string | null;
+  heldOn: string; slotStart: string | null; slotEnd: string | null; scheduledHours: number | null; actualHours: number | null; hoursTaught: number;
+  outcome: Outcome; rescheduledTo: string | null; covered: LoggedTopic[]; leftover: LoggedTopic[]; skipped: LoggedTopic[];
+  carryForward: string | null; classworkStatus: WorkStatus; homeworkStatus: WorkStatus; notes: string | null; revision: number;
+  reviewedAt: string | null; reviewedByRole: string | null; reviewNote: string | null; loggedByRole: string; loggedByFacultyName: string | null; createdAt: string; updatedAt: string; isSample: boolean;
+}
+export interface SessionLogDetail extends SessionLog {
+  revisions: Array<{ revision: number; note: string; changedByRole: string; at: string; snapshot: Partial<SessionLog> }>;
+  mergedLogs: Array<{ id: string; subjectName: string; batchName: string }>;
+}
+
+export interface TopicProgress {
+  topicId: string; title: string; unitTitle: string; plannedHours: number; status: "skipped" | "not_started" | "in_progress" | "completed";
+  completionPct: number; coveredHours: number; remainingHours: number; plannedStart: string | null; plannedEnd: string | null; forecastEnd: string | null; overdue: boolean;
+}
+export interface SubjectProgress {
+  risk: RiskStatus; headline: string; reasons: string[]; hoursInScope: number; coveredHours: number; remainingHours: number; coveragePct: number | null;
+  plannedToDateHours: number; paceHours: number; availableHours: number | null; bufferRatio: number | null; projectedCompletion: string | null; projectionNote: string;
+  overdueTopics: Array<{ topicId: string; title: string; plannedEnd: string; completionPct: number }>; unloggedPastSessions: number; remainingSessions: number;
+  topics: TopicProgress[]; thresholds: { onTrack: number; tight: number };
+}
+export interface SubjectDetail {
+  asOf: string; referenceDate: string; thresholds: { onTrack: number; tight: number };
+  subject: { id: string; code: string; name: string; batchId: string; batchName: string; semesterId: string; semesterName: string; campusId: string; track: Track; facultyId: string | null; facultyName: string | null; isSample: boolean };
+  deadline: { date: string; lastTeachingDate: string; source: "exam" | "semester_end"; label: string };
+  progress: SubjectProgress; hoursTaught: number; sessionsLogged: number; lastLoggedOn: string | null; teachingCapacityHours: number; weeklyHours: number; recentLogs: SessionLog[];
+}
+export interface SubjectSummary {
+  id: string; code: string; name: string; batchId: string; batchName: string; semesterId: string; semesterName: string; campusId: string; track: Track; facultyName: string | null;
+  risk: RiskStatus; headline: string; coveragePct: number | null; hoursInScope: number; coveredHours: number; remainingHours: number; availableHours: number | null; bufferRatio: number | null;
+  paceHours: number; projectedCompletion: string | null; deadline: string; deadlineLabel: string; overdueCount: number; unloggedPastSessions: number;
+}
+export interface LogSaveResponse { log: SessionLog; progress: { before: SubjectSummary | null; after: SubjectSummary | null } }

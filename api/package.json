@@ -1,0 +1,38 @@
+{
+  "name": "@prospectus/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "node ../scripts/with-env.mjs prisma generate",
+    "db:migrate": "node ../scripts/with-env.mjs prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:deploy": "node ../scripts/with-env.mjs prisma migrate deploy",
+    "db:clear-sample": "tsx prisma/clear-sample.ts",
+    "test:integration": "node ../scripts/with-env.mjs vitest run --config vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^4.22.3",
+    "helmet": "^8.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.25",
+    "@types/node": "^20.19.43",
+    "@types/supertest": "^7.2.1",
+    "prisma": "^6.19.3",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
+    "typescript": "5.9",
+    "vitest": "^3.2.7"
+  }
+}

@@ -1,0 +1,90 @@
+[
+  {
+    "file": "magicui-number-ticker.tsx.orig.txt",
+    "sha256": "0f7dcbc6a1962615a877590304e846f33d390002a51f2226f544938577c220f4",
+    "bytes": 1799,
+    "retrievedAt": "2026-10-16",
+    "library": "Magic UI",
+    "component": "Number Ticker",
+    "docs": "https://magicui.design/docs/components/number-ticker",
+    "source": "https://magicui.design/r/number-ticker.json",
+    "license": "MIT"
+  },
+  {
+    "file": "magicui-animated-theme-toggler.tsx.orig.txt",
+    "sha256": "5d09afdb5968e9f7f3967943c27103d727f264fdd51fa14b10a4b3130a1970a8",
+    "bytes": 10208,
+    "retrievedAt": "2026-10-16",
+    "library": "Magic UI",
+    "component": "Theme Toggler (animated-theme-toggler)",
+    "docs": "https://magicui.design/docs/components/animated-theme-toggler",
+    "source": "https://magicui.design/r/animated-theme-toggler.json",
+    "license": "MIT"
+  },
+  {
+    "file": "reactbits-SpotlightCard.tsx.orig.txt",
+    "sha256": "f7b64189ce3c018e5f54103bdf16b3e5f0c97f4a0dba9f6cd62d8793580b8c72",
+    "bytes": 12423,
+    "retrievedAt": "2026-10-16",
+    "library": "React Bits",
+    "component": "SpotlightCard (TS + Tailwind variant)",
+    "docs": "https://reactbits.dev/components/spotlight-card",
+    "source": "https://reactbits.dev/r/SpotlightCard-TS-TW.json",
+    "license": "MIT + Commons Clause (see https://github.com/DavidHDev/react-bits)"
+  },
+  {
+    "file": "aceternity-stateful-button.tsx.orig.txt",
+    "sha256": "b19e3cee5986e376b9bffb740b77747ffd3c149d150c9e36b73c395ba7cb2ef9",
+    "bytes": 3523,
+    "retrievedAt": "2026-10-16",
+    "library": "Aceternity UI",
+    "component": "Stateful Button",
+    "docs": "https://ui.aceternity.com/components/stateful-button",
+    "source": "https://ui.aceternity.com/registry/stateful-button.json",
+    "license": "Aceternity License (https://ui.aceternity.com/licence): unlimited end products incl. modification; re-distributing the item's source files or building templates from it is prohibited"
+  },
+  {
+    "file": "originkit-arrow-reveal-button.tsx.orig.txt",
+    "sha256": "0ff9e4478a4ba2a94dc3669aa185c6a84439429e8c907911ca98856a9593bde1",
+    "bytes": 29369,
+    "retrievedAt": "2026-10-16",
+    "library": "Originkit",
+    "component": "Arrow Reveal Button",
+    "docs": "https://www.originkit.dev/components/arrow-reveal-button",
+    "source": "https://www.originkit.dev/components/arrow-reveal-button (React/Next.js source delivered by the component page; the 'npx originkit add arrow-reveal-button' CLI route needs an Originkit account and was NOT used)",
+    "license": "Originkit licence: free to build and run your own projects; no redistribution as a template/starter kit \u2014 https://www.originkit.dev/docs/licensing"
+  },
+  {
+    "file": "magicui-blur-fade.tsx.orig.txt",
+    "sha256": "99a8e83aa8817f48e26d921e959ff9abefb5c2f1f0b72b166ed95e88e015949f",
+    "bytes": 2220,
+    "retrievedAt": "2026-10-16",
+    "library": "Magic UI",
+    "component": "Blur Fade",
+    "docs": "https://magicui.design/docs/components/blur-fade",
+    "source": "https://magicui.design/r/blur-fade.json",
+    "license": "MIT"
+  },
+  {
+    "file": "magicui-dot-pattern.tsx.orig.txt",
+    "sha256": "f198ffad23f2404f7f8d0d562e1eec5d5d43e61635994bf74a214af9fa553bcb",
+    "bytes": 4251,
+    "retrievedAt": "2026-10-16",
+    "library": "Magic UI",
+    "component": "Dot Pattern",
+    "docs": "https://magicui.design/docs/components/dot-pattern",
+    "source": "https://magicui.design/r/dot-pattern.json",
+    "license": "MIT"
+  },
+  {
+    "file": "aceternity-spotlight.tsx.orig.txt",
+    "sha256": "5bf5e3c43a1dab43e6e0ac56c4783132608b91a2fabdc4a61b2b961ef519093d",
+    "bytes": 1450,
+    "retrievedAt": "2026-10-16",
+    "library": "Aceternity UI",
+    "component": "Spotlight",
+    "docs": "https://ui.aceternity.com/components/spotlight",
+    "source": "https://ui.aceternity.com/registry/spotlight.json",
+    "license": "Aceternity License (https://ui.aceternity.com/licence): unlimited end products incl. modification; re-distributing the item's source files or building templates from it is prohibited"
+  }
+]

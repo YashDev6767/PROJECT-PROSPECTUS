@@ -1,0 +1,305 @@
+// PROSPECTUS data model.
+// Phase 1: Campus, User.
+// Phase 2: academic setup — semesters, batches, faculty, subjects, syllabus, timetable, calendar, exams.
+// Phase 3: session logs and per-topic progress entries. Coverage, risk and projections are DERIVED from these rows, never stored.
+//
+// Design notes
+// - Dates (`@db.Date`) are calendar days with no time zone. Times of day are "HH:MM" strings.
+// - Anything that can be derived is NOT stored: a batch's campus/track come from its semester,
+//   a timetable entry's batch/faculty come from its subject, scheduled hours come from timetable rows.
+// - `isSample` marks demonstration rows so they can be told apart from real data and removed.
+// - Deletes are restrictive by default; the API reports what is blocking a delete instead of cascading silently.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CAMPUS_MANAGER
+  FACULTY
+  STUDENT
+}
+
+enum SessionOutcome {
+  COMPLETED
+  IN_PROGRESS
+  SKIPPED
+  MERGED
+  CANCELLED
+}
+
+enum WorkStatus {
+  NOT_GIVEN
+  GIVEN
+  REVIEWED
+}
+
+enum TopicEntryKind {
+  COVERED // completionPct = cumulative completion of the topic after this session (100 = done)
+  LEFTOVER // planned for the session but not reached (informational)
+  SKIPPED // topic explicitly dropped from the syllabus scope
+}
+
+enum Track {
+  MIRAI
+  UNIVERSITY
+}
+
+enum SaturdayRule {
+  ALL
+  NONE
+  SECOND_FOURTH
+}
+
+enum CalendarCategory {
+  HOLIDAY
+  EVENT
+  EXAM
+  ACADEMIC_DEADLINE
+  SPECIAL_WORKING_DAY
+}
+
+enum ExamType {
+  SESSIONAL
+  MID_TERM
+  PUT
+  END_TERM
+}
+
+model Campus {
+  id              String          @id // stable slug, e.g. "hi-tech"
+  name            String          @unique
+  city            String?
+  users           User[]
+  semesters       Semester[]
+  faculty         Faculty[]
+  calendarEntries CalendarEntry[]
+}
+
+model User {
+  id        String       @id @default(cuid())
+  email     String       @unique
+  name      String
+  role      Role
+  campusId  String?
+  campus    Campus?      @relation(fields: [campusId], references: [id])
+  sessions  SessionLog[]
+  createdAt DateTime     @default(now())
+}
+
+model Semester {
+  id           String       @id @default(cuid())
+  name         String
+  academicYear String // e.g. "2026-27"
+  track        Track
+  campusId     String
+  campus       Campus       @relation(fields: [campusId], references: [id])
+  startsOn     DateTime     @db.Date
+  endsOn       DateTime     @db.Date
+  saturdayRule SaturdayRule @default(SECOND_FOURTH)
+  isActive     Boolean      @default(false)
+  isSample     Boolean      @default(false)
+  batches      Batch[]
+  exams        Exam[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([campusId, track, name])
+  @@index([campusId, track])
+}
+
+model Batch {
+  id           String    @id @default(cuid())
+  name         String
+  semesterId   String
+  semester     Semester  @relation(fields: [semesterId], references: [id], onDelete: Restrict)
+  studentCount Int?
+  isSample     Boolean   @default(false)
+  subjects     Subject[]
+  exams        Exam[]
+
+  @@unique([semesterId, name])
+}
+
+model Faculty {
+  id          String       @id @default(cuid())
+  name        String
+  email       String?      @unique
+  campusId    String
+  campus      Campus       @relation(fields: [campusId], references: [id])
+  isSample    Boolean      @default(false)
+  subjects    Subject[]
+  sessionLogs SessionLog[]
+
+  @@index([campusId])
+}
+
+// A subject as taught to one batch. Phase 3 session logs and progression attach to this row.
+model Subject {
+  id           String           @id @default(cuid())
+  code         String
+  name         String
+  batchId      String
+  batch        Batch            @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  facultyId    String?
+  faculty      Faculty?         @relation(fields: [facultyId], references: [id], onDelete: Restrict)
+  plannedHours Float? // total teaching hours planned for the semester, when known
+  isSample     Boolean          @default(false)
+  units        SyllabusUnit[]
+  timetable    TimetableEntry[]
+  sessions     SessionLog[]
+
+  @@unique([batchId, code])
+  @@index([facultyId])
+}
+
+model SyllabusUnit {
+  id        String          @id @default(cuid())
+  subjectId String
+  subject   Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  title     String
+  position  Int // 0-based order within the subject
+  topics    SyllabusTopic[]
+
+  @@index([subjectId, position])
+}
+
+model SyllabusTopic {
+  id           String              @id @default(cuid())
+  unitId       String
+  unit         SyllabusUnit        @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  title        String
+  position     Int // 0-based order within the unit
+  plannedHours Float
+  examScope    ExamType? // first exam type that assesses this topic; Phase 4 links it to exam dates
+  entries      SessionTopicEntry[]
+
+  @@index([unitId, position])
+}
+
+model TimetableEntry {
+  id          String       @id @default(cuid())
+  subjectId   String
+  subject     Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  weekday     Int // ISO: 1 = Monday ... 7 = Sunday
+  startTime   String // "HH:MM" 24h
+  endTime     String
+  room        String?
+  sessionLogs SessionLog[]
+
+  @@index([subjectId])
+  @@index([weekday])
+}
+
+model CalendarEntry {
+  id          String           @id @default(cuid())
+  title       String
+  category    CalendarCategory
+  startsOn    DateTime         @db.Date
+  endsOn      DateTime         @db.Date
+  campusId    String? // null = institution-wide
+  campus      Campus?          @relation(fields: [campusId], references: [id])
+  description String?
+  isSample    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  @@index([startsOn, endsOn])
+  @@index([campusId])
+}
+
+model Exam {
+  id         String   @id @default(cuid())
+  name       String
+  type       ExamType
+  semesterId String
+  semester   Semester @relation(fields: [semesterId], references: [id], onDelete: Restrict)
+  batchId    String? // null = whole semester cohort
+  batch      Batch?   @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  startsOn   DateTime @db.Date
+  endsOn     DateTime @db.Date
+  notes      String?
+  isSample   Boolean  @default(false)
+
+  @@index([semesterId, startsOn])
+}
+
+// One row per class that was held, missed, merged or cancelled.
+// - `timetableEntryId` + `heldOn` identify the scheduled session; the unique constraint prevents duplicate logs.
+// - Extra / make-up sessions have no timetable entry (`makeupOfId` links a make-up to the cancelled log it replaces).
+// - Merged sessions point at the primary log (`mergedIntoId`) and carry zero teaching hours, so hours count once.
+// - `scheduledHours` / `slotStart` / `slotEnd` are snapshots of the plan when the log was written (history survives timetable edits).
+model SessionLog {
+  id                String               @id @default(cuid())
+  subjectId         String
+  subject           Subject              @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  timetableEntryId  String?
+  timetableEntry    TimetableEntry?      @relation(fields: [timetableEntryId], references: [id], onDelete: SetNull)
+  makeupOfId        String?              @unique
+  makeupOf          SessionLog?          @relation("Makeup", fields: [makeupOfId], references: [id], onDelete: SetNull)
+  makeup            SessionLog?          @relation("Makeup")
+  mergedIntoId      String?
+  mergedInto        SessionLog?          @relation("Merge", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+  mergedLogs        SessionLog[]         @relation("Merge")
+  heldOn            DateTime             @db.Date
+  slotStart         String?
+  slotEnd           String?
+  scheduledHours    Float?
+  actualHours       Float?
+  outcome           SessionOutcome
+  rescheduledTo     DateTime?            @db.Date
+  carryForward      String?
+  classworkStatus   WorkStatus           @default(NOT_GIVEN)
+  homeworkStatus    WorkStatus           @default(NOT_GIVEN)
+  notes             String?
+  loggedById        String? // reserved for Phase 4 authentication
+  loggedBy          User?                @relation(fields: [loggedById], references: [id])
+  loggedByRole      String // demo role that wrote the log (not verified identity)
+  loggedByFacultyId String?
+  loggedByFaculty   Faculty?             @relation(fields: [loggedByFacultyId], references: [id], onDelete: SetNull)
+  revision          Int                  @default(1)
+  reviewedAt        DateTime?
+  reviewedByRole    String?
+  reviewNote        String?
+  isSample          Boolean              @default(false)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  topicEntries      SessionTopicEntry[]
+  revisions         SessionLogRevision[]
+
+  @@unique([timetableEntryId, heldOn])
+  @@index([subjectId, heldOn])
+  @@index([heldOn])
+}
+
+model SessionTopicEntry {
+  id            String         @id @default(cuid())
+  sessionLogId  String
+  sessionLog    SessionLog     @relation(fields: [sessionLogId], references: [id], onDelete: Cascade)
+  topicId       String
+  topic         SyllabusTopic  @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  kind          TopicEntryKind
+  completionPct Int            @default(0) // 1-100 for COVERED, 0 otherwise (CHECK constraint in migration)
+
+  @@unique([sessionLogId, topicId])
+  @@index([topicId])
+}
+
+// Audit trail for the explicit correction workflow: the previous state of a log before each edit.
+model SessionLogRevision {
+  id            String     @id @default(cuid())
+  sessionLogId  String
+  sessionLog    SessionLog @relation(fields: [sessionLogId], references: [id], onDelete: Cascade)
+  revision      Int // the revision number that was REPLACED
+  snapshot      Json
+  note          String
+  changedByRole String
+  createdAt     DateTime   @default(now())
+
+  @@unique([sessionLogId, revision])
+}
