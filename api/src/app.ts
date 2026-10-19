@@ -20,6 +20,7 @@ import { subjectsRouter } from "./routes/subjects.js";
 import { syllabusRouter } from "./routes/syllabus.js";
 import { timetableRouter } from "./routes/timetable.js";
 import { reportsRouter } from "./routes/reports.js";
+import { studentRouter } from "./routes/student.js";
 import { authRouter } from "./routes/auth.js";
 import { createAuth } from "./services/auth.js";
 import { roleFromHeader } from "./domain/permissions.js";
@@ -40,10 +41,10 @@ export function createApp(env: Pick<Env, "CORS_ORIGIN"> & Partial<Pick<Env, "APP
   // Establish the caller once per request. A valid signed session always wins over demo headers.
   app.use("/api", (req, res, next) => {
     const session = auth.read(req.headers.cookie, now().getTime());
-    if (session) res.locals.identity = { source: "session", role: session.role, facultyId: session.facultyId, email: session.email } satisfies Identity;
+    if (session) res.locals.identity = { source: "session", role: session.role, facultyId: session.facultyId, batchId: session.batchId, email: session.email } satisfies Identity;
     else if (allowDemo) {
       const role = roleFromHeader(req.header("x-demo-role"));
-      if (role) res.locals.identity = { source: "demo", role, facultyId: req.header("x-demo-faculty")?.trim() || null, email: null } satisfies Identity;
+      if (role) res.locals.identity = { source: "demo", role, facultyId: req.header("x-demo-faculty")?.trim() || null, batchId: req.header("x-demo-batch")?.trim() || null, email: null } satisfies Identity;
     }
     next();
   });
@@ -60,7 +61,7 @@ export function createApp(env: Pick<Env, "CORS_ORIGIN"> & Partial<Pick<Env, "APP
   app.use("/api", healthRouter(db));
   app.use("/api", dashboardRouter(deps));
   app.use("/api", metaRouter());
-  for (const router of [semestersRouter, calendarRouter, examsRouter, peopleRouter, subjectsRouter, timetableRouter, syllabusRouter, sessionLogsRouter, progressionRouter, examReadinessRouter, reportsRouter]) {
+  for (const router of [semestersRouter, calendarRouter, examsRouter, peopleRouter, subjectsRouter, timetableRouter, syllabusRouter, sessionLogsRouter, progressionRouter, examReadinessRouter, reportsRouter, studentRouter]) {
     app.use("/api", router(deps));
   }
   app.use("/api", (_req, res) => { res.status(404).json({ error: "not_found", message: "No such endpoint" }); });

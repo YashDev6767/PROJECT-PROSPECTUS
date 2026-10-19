@@ -11,7 +11,7 @@ const hash = (pw: string) => { const salt = randomBytes(16); return `scrypt:${sa
 export const E2E_LOGIN = { email: "e2e.admin@msot.test", password: "e2e-admin-passphrase", studentEmail: "e2e.student@msot.test", studentPassword: "e2e-student-passphrase" };
 const e2eUsers = JSON.stringify([
   { email: E2E_LOGIN.email, role: "admin", name: "E2E Admin", passwordHash: hash(E2E_LOGIN.password) },
-  { email: E2E_LOGIN.studentEmail, role: "student", passwordHash: hash(E2E_LOGIN.studentPassword) },
+  { email: E2E_LOGIN.studentEmail, role: "student", batchId: "sample-batch-hi-tech-mirai-a-s3", passwordHash: hash(E2E_LOGIN.studentPassword) },
 ]);
 
 export default defineConfig({

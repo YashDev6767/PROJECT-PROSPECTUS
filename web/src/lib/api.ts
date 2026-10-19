@@ -12,7 +12,10 @@ export const setApiFaculty = (id: string | null) => { demoFaculty = id; };
 // With a signed-in session the server reads the role from the HttpOnly cookie and the demo headers are not sent at all.
 let sessionActive = false;
 export const setApiSession = (active: boolean) => { sessionActive = active; };
-const identityHeaders = (): Record<string, string> => sessionActive ? {} : ({ ...(demoRole ? { "X-Demo-Role": demoRole } : {}), ...(demoFaculty ? { "X-Demo-Faculty": demoFaculty } : {}) });
+// DEMO ONLY (development): which batch a previewing "student" looks at. A signed-in student's batch comes from the server, never from here.
+let demoBatch: string | null = null;
+export const setApiBatch = (id: string | null) => { demoBatch = id; };
+const identityHeaders = (): Record<string, string> => sessionActive ? {} : ({ ...(demoRole ? { "X-Demo-Role": demoRole } : {}), ...(demoFaculty ? { "X-Demo-Faculty": demoFaculty } : {}), ...(demoRole === "student" && demoBatch ? { "X-Demo-Batch": demoBatch } : {}) });
 
 export interface ApiIssue { path: string; message: string }
 export interface ApiWarning { code: string; message: string }
@@ -73,7 +76,7 @@ export const fetchDashboard = (campusId: string | null, signal?: AbortSignal) =>
 export const fetchHealth = (signal?: AbortSignal) => api.get<Health>("/api/health", signal);
 
 /* ---------- restricted evaluation sign-in (server-verified session cookie) ---------- */
-export interface SessionUser { email: string; role: Role; name: string | null; facultyId: string | null }
+export interface SessionUser { email: string; role: Role; name: string | null; facultyId: string | null; batchId?: string | null }
 export interface AuthConfig { sessionLogin: boolean; demoHeaders: boolean }
 export const fetchAuthConfig = () => api.get<Partial<AuthConfig>>("/api/auth/config");
 export const fetchSession = () => api.get<{ user?: SessionUser | null }>("/api/auth/session");

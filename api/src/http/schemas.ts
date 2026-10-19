@@ -159,3 +159,5 @@ export const reportQuery = z.object({
 export const reportExportQuery = reportQuery.extend({
   format: z.enum(["csv"]).default("csv"),
 });
+
+export const carryForwardQuery = z.object({ subjectId: id, heldOn: isoDate, excludeLogId: id.optional() });

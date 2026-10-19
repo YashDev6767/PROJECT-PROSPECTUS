@@ -10,7 +10,7 @@ import type { Settings } from "./settings.js";
 
 export type ExamReadinessState = "ready" | "no_active_semester" | "no_exams";
 
-export async function buildExamReadiness(prisma: PrismaClient, q: { campusId: string; track?: Track | undefined; semesterId?: string | undefined; asOf: ISODate }, settings: Settings) {
+export async function buildExamReadiness(prisma: PrismaClient, q: { campusId: string; track?: Track | undefined; semesterId?: string | undefined; asOf: ISODate; /** only exams and subjects that apply to this batch (the student portal) */ batchId?: string | undefined; /** also list the in-scope topics of each subject */ includeTopics?: boolean }, settings: Settings) {
   const semesterWhere = q.semesterId
     ? { id: q.semesterId, campusId: q.campusId }
     : { campusId: q.campusId, track: q.track, isActive: true, startsOn: { lte: dbDate(q.asOf) }, endsOn: { gte: dbDate(q.asOf) } };
@@ -21,14 +21,14 @@ export async function buildExamReadiness(prisma: PrismaClient, q: { campusId: st
   }
 
   const exams = await prisma.exam.findMany({
-    where: { semesterId: { in: semesters.map((s) => s.id) }, endsOn: { gte: dbDate(q.asOf) } },
+    where: { semesterId: { in: semesters.map((s) => s.id) }, endsOn: { gte: dbDate(q.asOf) }, ...(q.batchId ? { OR: [{ batchId: null }, { batchId: q.batchId }] } : {}) },
     include: { semester: true, batch: true }, orderBy: [{ startsOn: "asc" }, { name: "asc" }],
   });
   if (exams.length === 0) {
     return { ...base, state: "no_exams" as ExamReadinessState, message: "No upcoming exams are configured for the active semester. Add them under Exam Schedule.", exams: [] };
   }
 
-  const contexts = await loadSubjectContexts(prisma, { batch: { semesterId: { in: semesters.map((s) => s.id) } } });
+  const contexts = await loadSubjectContexts(prisma, { batchId: q.batchId, batch: { semesterId: { in: semesters.map((s) => s.id) } } });
   const out = exams.map((e) => {
     const startsOn = iso(e.startsOn), endsOn = iso(e.endsOn);
     const deadline = { date: startsOn, lastTeachingDate: addDays(startsOn, -1), source: "exam" as const, examType: e.type, label: `${e.name} starts ${startsOn}` };
@@ -44,6 +44,7 @@ export async function buildExamReadiness(prisma: PrismaClient, q: { campusId: st
         scopeMode: mode, topicsInScope: p.topics.filter((t) => t.status !== "skipped").length, unscopedTopics: mode === "exam_scope" ? allTopics.filter((t) => t.examScope === null).length : 0,
         hoursInScope: p.hoursInScope, coveredHours: p.coveredHours, remainingHours: p.remainingHours, coveragePct: p.coveragePct,
         availableHours: p.availableHours, bufferRatio: p.bufferRatio, projectedCompletion: p.projectedCompletion, unloggedPastSessions: p.unloggedPastSessions,
+        ...(q.includeTopics ? { scopeTopics: p.topics.filter((t) => t.status !== "skipped").map((t) => ({ title: t.title, unitTitle: t.unitTitle, completionPct: t.completionPct })) } : {}),
       };
     }).sort((a, b) => (a.bufferRatio ?? 99) - (b.bufferRatio ?? 99) || a.name.localeCompare(b.name));
     const status = examStatus(subjects.map((s) => s.status));

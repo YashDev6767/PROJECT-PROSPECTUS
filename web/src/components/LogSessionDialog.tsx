@@ -1,14 +1,14 @@
 import { CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Badge, Button, Skeleton, cx } from "./ui";
 import { Dialog } from "./ui/Dialog";
 import { Field, Input, Select, SubmitFeedback, Textarea, useSubmit } from "./ui/forms";
 import { Boundary, useResource } from "./ui/Resource";
 import { useToast } from "./ui/Toast";
 import { api } from "../lib/api";
-import { longDate } from "../lib/format";
+import { longDate, shortDate } from "../lib/format";
 import { outcomeLabels, workLabels } from "../lib/labels";
-import type { LogSaveResponse, Outcome, ScheduleItem, SessionLogDetail, SubjectDetail, SubjectSummary, TopicProgress, WorkStatus } from "../lib/types";
+import type { CarryForwardResponse, CarryItem, LogSaveResponse, Outcome, ScheduleItem, SessionLogDetail, SubjectDetail, SubjectSummary, TopicProgress, WorkStatus } from "../lib/types";
 import { RiskBadge } from "./ui";
 
 type Mode = "none" | "partial" | "done";
@@ -62,12 +62,32 @@ function LogForm({ item, detail, existing, sameDayLogs, onClose, onSaved }: { it
   const [mergedInto, setMergedInto] = useState(existing?.mergedIntoId ?? "");
   const [correction, setCorrection] = useState("");
 
+  // Smart carry-forward: unfinished work from the previous teaching session (read-only suggestions; nothing is written until Save).
+  const carryRes = useResource<CarryForwardResponse>(`/api/session-logs/carry-forward?subjectId=${item.subjectId}&heldOn=${item.date}${existing ? `&excludeLogId=${existing.id}` : ""}`);
+  const carryItems: CarryItem[] = carryRes.data?.items ?? [];
+  const carriedIds = useMemo(() => new Set(carryItems.map((c) => c.topicId)), [carryItems]);
+  const [carryTouched, setCarryTouched] = useState(false);
+  const preselected = useRef(false);
+  useEffect(() => { // a NEW log starts with every offered item selected (keep as leftover); a correction keeps exactly what was saved
+    if (preselected.current || existing || carryItems.length === 0) return;
+    preselected.current = true;
+    setLeftover((cur) => new Set([...cur, ...carryItems.map((c) => c.topicId)]));
+    setSkipped((cur) => new Set([...cur].filter((id) => !carriedIds.has(id))));
+  }, [carryItems, carriedIds, existing]);
+  const carrySummary = (selected: CarryItem[]) => selected.length === 0 ? "" : `Carried from ${selected[0]!.fromDate}: ${selected.map((c) => `${c.title} (${c.reason === "in_progress" ? `${c.completionPct}% done, ` : ""}${c.remainingHours} h left)`).join("; ")}`;
+  useEffect(() => { // prefill the (editable) carry-forward note while the user has not typed their own
+    if (existing || carryTouched || carryItems.length === 0) return;
+    setCarry(carrySummary(carryItems.filter((c) => leftover.has(c.topicId) && !draft[c.topicId])));
+  }, [leftover, draft, carryItems, carryTouched, existing]); // eslint-disable-line react-hooks/exhaustive-deps
+  const toggleCarry = (id: string) => { const n = new Set(leftover); if (n.has(id)) n.delete(id); else { n.add(id); setSkipped((cur) => { const k = new Set(cur); k.delete(id); return k; }); } setLeftover(n); };
+
   // Topics shown first: everything not finished (so the next topics are always at hand) plus anything already touched by this log.
   const visible = useMemo(() => {
     if (showAll) return topics;
     const open = topics.filter((t) => (t.status !== "completed" && t.status !== "skipped") || draft[t.topicId]);
-    return open.slice(0, 8);
-  }, [topics, showAll, draft]);
+    const first = open.filter((t) => carriedIds.has(t.topicId)); // carried work is pinned to the top
+    return [...first, ...open.filter((t) => !carriedIds.has(t.topicId))].slice(0, Math.max(8, first.length));
+  }, [topics, showAll, draft, carriedIds]);
   const hidden = topics.length - visible.length;
 
   const primaries = sameDayLogs.filter((i) => i.log && i.subjectId !== item.subjectId && i.facultyId === item.facultyId && (i.log.outcome === "COMPLETED" || i.log.outcome === "IN_PROGRESS"));
@@ -85,7 +105,7 @@ function LogForm({ item, detail, existing, sameDayLogs, onClose, onSaved }: { it
   const body = () => ({
     outcome,
     covered: teaches(outcome) ? Object.entries(draft).map(([topicId, d]) => ({ topicId, completionPct: d.mode === "done" ? 100 : Number(d.pct) })) : [],
-    leftover: teaches(outcome) ? [...leftover].filter((id) => !draft[id]) : [], skipped: teaches(outcome) ? [...skipped].filter((id) => !draft[id]) : [],
+    leftover: teaches(outcome) ? [...leftover].filter((id) => !draft[id] && !skipped.has(id)) : [], skipped: teaches(outcome) ? [...skipped].filter((id) => !draft[id]) : [],
     notes: notes || null, carryForward: teaches(outcome) ? carry || null : null, classworkStatus: teaches(outcome) ? classwork : "NOT_GIVEN", homeworkStatus: teaches(outcome) ? homework : "NOT_GIVEN",
     actualHours: (outcome === "COMPLETED" || outcome === "IN_PROGRESS") && hours !== "" ? Number(hours) : null,
     rescheduledTo: outcome === "CANCELLED" && resched ? resched : null, mergedIntoId: outcome === "MERGED" ? mergedInto || null : null,
@@ -117,6 +137,31 @@ function LogForm({ item, detail, existing, sameDayLogs, onClose, onSaved }: { it
         {err.outcome && <p role="alert" className="mt-1 text-xs font-medium text-danger">{err.outcome}</p>}
       </fieldset>
 
+      {teaches(outcome) && carryItems.length > 0 && (
+        <section aria-label="Carry forward from previous session" className="space-y-2.5 rounded-xl border border-accent/30 bg-accent-soft/40 p-3.5">
+          <div>
+            <h3 className="text-sm font-semibold text-fg">Carry forward from previous session</h3>
+            <p className="text-xs text-fg-subtle">Unfinished work from {carryRes.data?.source ? longDate(carryRes.data.source.heldOn) : "the last class"}. Selected items are kept as leftover for this session; teach one now by marking it Partly or Done below.</p>
+          </div>
+          <ul className="space-y-1.5">
+            {carryItems.map((c) => {
+              const coveredNow = Boolean(draft[c.topicId]);
+              return (
+                <li key={c.topicId}>
+                  <label className="flex min-h-11 cursor-pointer items-start gap-2.5 rounded-lg px-1 py-1.5 text-sm hover:bg-surface/60">
+                    <input type="checkbox" className="mt-1 size-4" checked={coveredNow || leftover.has(c.topicId)} disabled={coveredNow} onChange={() => toggleCarry(c.topicId)} aria-label={`Carry forward ${c.title}`} />
+                    <span className="min-w-0">
+                      <span className="block font-medium text-fg">{c.title} <span className="font-normal text-fg-subtle">· {c.unitTitle}</span></span>
+                      <span className="block text-xs text-fg-subtle">{coveredNow ? "Being covered in this session" : c.reason === "in_progress" ? `${c.completionPct}% done · ${c.remainingHours} h left` : `Left over · ${c.remainingHours} h`} · from {shortDate(c.fromDate)}</span>
+                    </span>
+                  </label>
+                </li>);
+            })}
+          </ul>
+          {carryRes.data?.note && <p className="rounded-lg bg-surface/70 px-3 py-2 text-xs text-fg-muted"><strong className="font-medium text-fg">Note from last time:</strong> {carryRes.data.note}</p>}
+        </section>)}
+      {teaches(outcome) && carryRes.error && !carryRes.data && <p role="status" className="text-xs text-fg-subtle">Carry-forward suggestions could not be loaded. You can still log this session normally.</p>}
+
       {teaches(outcome) && (
         <section aria-label="Topics covered" className="space-y-3">
           <div className="flex items-baseline justify-between"><h3 className="text-sm font-semibold text-fg">What did you cover?</h3><span className="text-xs text-fg-subtle">Tap Done, or Partly and enter the total % reached</span></div>
@@ -127,7 +172,7 @@ function LogForm({ item, detail, existing, sameDayLogs, onClose, onSaved }: { it
                 return (
                   <li key={t.topicId} className={cx("rounded-xl border p-2.5", d ? "border-accent/50 bg-accent-soft/50" : "border-line")}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="min-w-0"><p className="truncate text-sm font-semibold text-fg">{t.title}</p><p className="text-xs text-fg-subtle">{t.unitTitle} · {t.plannedHours} h · {t.status === "skipped" ? "skipped" : `${t.completionPct}% so far`}{t.overdue ? " · overdue" : ""}</p></div>
+                      <div className="min-w-0"><p className="truncate text-sm font-semibold text-fg">{t.title}</p><p className="text-xs text-fg-subtle">{t.unitTitle} · {t.plannedHours} h · {t.status === "skipped" ? "skipped" : `${t.completionPct}% so far`}{t.overdue ? " · overdue" : ""}{carriedIds.has(t.topicId) && <span className="ml-1 rounded bg-accent-soft px-1.5 py-px font-medium text-accent-soft-fg">carried</span>}</p></div>
                       <div role="group" aria-label={`${t.title} progress this session`} className="flex gap-1">
                         {(["none", "partial", "done"] as Mode[]).map((m) => (
                           <button key={m} type="button" aria-pressed={(d?.mode ?? "none") === m} onClick={() => setMode(t, m)}
@@ -153,7 +198,7 @@ function LogForm({ item, detail, existing, sameDayLogs, onClose, onSaved }: { it
                     <div className="max-h-40 space-y-1 overflow-y-auto">{topics.filter((t) => t.status !== "completed" && !draft[t.topicId]).map((t) => (
                       <label key={t.topicId} className="flex min-h-9 items-center gap-2 text-sm text-fg-2"><input type="checkbox" className="size-4" checked={set.has(t.topicId)} onChange={() => toggle(set, t.topicId, setter)} />{t.title}</label>))}</div></fieldset>))}
               </div>
-              <Field label="Carry-forward work (for the next class)" error={err.carryForward}><Textarea value={carry} onChange={(e) => setCarry(e.target.value)} maxLength={1000} /></Field>
+              <Field label="Carry-forward work (for the next class)" error={err.carryForward}><Textarea value={carry} onChange={(e) => { setCarryTouched(true); setCarry(e.target.value); }} maxLength={1000} /></Field>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Classwork"><Select value={classwork} onChange={(e) => setClasswork(e.target.value as WorkStatus)}>{(Object.keys(workLabels) as WorkStatus[]).map((w) => <option key={w} value={w}>{workLabels[w]}</option>)}</Select></Field>
                 <Field label="Homework"><Select value={homework} onChange={(e) => setHomework(e.target.value as WorkStatus)}>{(Object.keys(workLabels) as WorkStatus[]).map((w) => <option key={w} value={w}>{workLabels[w]}</option>)}</Select></Field>

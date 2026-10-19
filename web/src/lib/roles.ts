@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, CalendarRange, ClipboardList, Clock, GraduationCap, LayoutDashboard, LibraryBig, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
+import { BarChart3, BookOpenCheck, CalendarDays, CalendarRange, ClipboardList, Clock, GraduationCap, LayoutDashboard, LibraryBig, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
 
 export type Role = "admin" | "campus_manager" | "faculty" | "student";
 
@@ -27,6 +27,7 @@ const all: Role[] = ["admin", "campus_manager", "faculty", "student"];
 
 export const navItems: NavItem[] = [
   { path: "/", group: "Workspace", label: "Overview", icon: LayoutDashboard, roles: all, summary: "Progress, risks and today's teaching at a glance." },
+  { path: "/my-learning", group: "Workspace", label: "My learning", icon: BookOpenCheck, roles: ["student"], summary: "Your subjects, progress, coming classes and exams." },
   { path: "/calendar", group: "Workspace", label: "Academic Calendar", icon: CalendarDays, roles: all, summary: "Working days, holidays, events and exam periods." },
   { path: "/semesters", group: "Academics", label: "Semesters", icon: CalendarRange, roles: ["admin", "campus_manager", "faculty"], summary: "Semester dates, tracks and working-day rules." },
   { path: "/exams", group: "Academics", label: "Exam Schedule", icon: ShieldCheck, roles: all, summary: "Sessionals, mid-term, PUT and end-term dates." },

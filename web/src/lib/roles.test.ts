@@ -16,7 +16,7 @@ describe("role-aware navigation", () => {
     expect(canLogSessions("faculty")).toBe(true);
   });
   it("keeps students read-only and away from semesters", () => {
-    expect(paths("student")).toEqual(["/", "/calendar", "/exams", "/subjects", "/timetable", "/exam-readiness"]);
+    expect(paths("student")).toEqual(["/", "/my-learning", "/calendar", "/exams", "/subjects", "/timetable", "/exam-readiness"]);
     expect(canLogSessions("student")).toBe(false);
   });
   it("has no duplicate sections", () => expect(new Set(paths("admin")).size).toBe(paths("admin").length));

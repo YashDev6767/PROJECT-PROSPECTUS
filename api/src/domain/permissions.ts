@@ -4,7 +4,7 @@
  * boundaries and error handling in place so real auth can replace `roleFromHeader` without touching routes.
  */
 export type DemoRole = "admin" | "campus_manager" | "faculty" | "student";
-export type Capability = "semesters:write" | "academic:write" | "special_working_day:write" | "sessions:read" | "sessions:write" | "sessions:review" | "reports:read";
+export type Capability = "semesters:write" | "academic:write" | "special_working_day:write" | "sessions:read" | "sessions:write" | "sessions:review" | "reports:read" | "portal:read";
 
 const matrix: Record<Capability, DemoRole[]> = {
   "semesters:write": ["admin"],
@@ -15,6 +15,8 @@ const matrix: Record<Capability, DemoRole[]> = {
   "sessions:write": ["admin", "campus_manager", "faculty"],
   "sessions:review": ["admin", "campus_manager"],
   "reports:read": ["admin", "campus_manager", "faculty"],
+  // The student learning portal. A student is bound to ONE batch by the server; staff must name the batch they want to look at.
+  "portal:read": ["admin", "campus_manager", "faculty", "student"],
 };
 
 export const can = (role: DemoRole | null, capability: Capability) => role !== null && matrix[capability].includes(role);

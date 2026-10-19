@@ -14,6 +14,7 @@ import { SessionLogs } from "./pages/SessionLogs";
 import { Syllabus } from "./pages/Syllabus";
 import { Timetable } from "./pages/Timetable";
 import { Reports } from "./pages/Reports";
+import { StudentPortal } from "./pages/StudentPortal";
 import { AccessGate } from "./components/layout/AccessGate";
 import { RequireAccess } from "./components/layout/RequireAccess";
 import { Login } from "./pages/Login";
@@ -27,6 +28,7 @@ export function App() {
       <Route path="login" element={<Login />} />
       <Route element={<RequireAccess><AppShell /></RequireAccess>}>
         <Route index element={<Overview />} />
+        <Route path="my-learning" element={guard("/my-learning", <StudentPortal />)} />
         <Route path="calendar" element={guard("/calendar", <AcademicCalendar />)} />
         <Route path="semesters" element={guard("/semesters", <Semesters />)} />
         <Route path="exams" element={guard("/exams", <Exams />)} />

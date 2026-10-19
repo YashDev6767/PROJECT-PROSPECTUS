@@ -1,9 +1,10 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { Router } from "express";
 import { addDays } from "../domain/dates.js";
+import { carryForwardFor } from "../domain/carryForward.js";
 import { type LogDraft } from "../domain/sessionLogs.js";
 import { asyncHandler, callerFaculty, callerRole, HttpError, needDb, notFound, parse, requireCapability, validationFailed } from "../http/errors.js";
-import { pendingQuery, reviewBody, scheduleQuery, sessionLogCreate, sessionLogQuery, sessionLogUpdate } from "../http/schemas.js";
+import { carryForwardQuery, pendingQuery, reviewBody, scheduleQuery, sessionLogCreate, sessionLogQuery, sessionLogUpdate } from "../http/schemas.js";
 import { dbDate, iso } from "../services/format.js";
 import { computeSubjectResult, loadSubjectContexts, summarize } from "../services/progressionData.js";
 import { sessionsInRange } from "../services/scheduleData.js";
@@ -41,6 +42,22 @@ export function sessionLogsRouter(deps: Deps): Router {
     const to = addDays(today(), -1);
     const { items } = await sessionsInRange(prisma, { from: addDays(today(), -q.days), to, campusId: q.campusId, track: q.track, facultyId: q.facultyId });
     res.json({ from: addDays(today(), -q.days), to, items: items.filter((i) => i.log === null).reverse() });
+  }));
+
+  /* ---- smart carry-forward: unfinished topics from the previous teaching session of the same subject (read-only) ---- */
+  r.get("/session-logs/carry-forward", requireCapability("sessions:read"), asyncHandler(async (req, res) => {
+    const q = parse(carryForwardQuery, req.query);
+    const prisma = needDb(db);
+    const [ctx] = await loadSubjectContexts(prisma, { id: q.subjectId });
+    if (!ctx) throw notFound("Subject");
+    assertOwnership(callerRole(res), callerFaculty(res), ctx.subject);
+    const s = ctx.subject;
+    const result = carryForwardFor({
+      heldOn: q.heldOn, excludeLogId: q.excludeLogId ?? null,
+      topics: s.units.flatMap((u) => u.topics.map((t) => ({ id: t.id, title: t.title, unitTitle: u.title, plannedHours: t.plannedHours }))),
+      logs: s.sessions.map((l) => ({ id: l.id, heldOn: iso(l.heldOn), createdAtMs: l.createdAt.getTime(), outcome: l.outcome, carryForward: l.carryForward, entries: l.topicEntries.map((e) => ({ topicId: e.topicId, kind: e.kind, completionPct: e.completionPct })) })),
+    });
+    res.json({ subjectId: s.id, heldOn: q.heldOn, ...result });
   }));
 
   /* ---- list / detail ---- */

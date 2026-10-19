@@ -283,3 +283,91 @@ describe("Subjects list shows progress status", () => {
     expect(link).toHaveTextContent("62% · buffer 1.02");
   });
 });
+
+describe("smart carry-forward in the logging dialog", () => {
+  const faculty = { faculty: [{ id: "f1", name: "Faculty One", email: null, campusId: "hi-tech", campusName: "HI-Tech", isSample: false, subjectCount: 1 }] };
+  const carryBody = (items: unknown[], note: string | null = null) => ({ subjectId: "sub1", heldOn: "2026-10-05", source: items.length ? { logId: "prev", heldOn: "2026-09-28", outcome: "IN_PROGRESS" } : null, items, note });
+  const c2 = { topicId: "t2", title: "Topic 2", unitTitle: "Unit 1", plannedHours: 3, reason: "in_progress", completionPct: 50, remainingHours: 1.5, fromDate: "2026-09-28", fromLogId: "prev" };
+  const c3 = { topicId: "t3", title: "Topic 3", unitTitle: "Unit 1", plannedHours: 3, reason: "leftover", completionPct: 0, remainingHours: 3, fromDate: "2026-09-28", fromLogId: "prev" };
+  const withCarry = (items: unknown[], note: string | null = null, extra?: Handler): Handler => (u, init) => {
+    if (u.pathname === "/api/faculty") return { body: faculty };
+    if (u.pathname === "/api/session-logs/schedule") return { body: { date: "2026-10-05", today: "2026-10-05", items: [item()], notices: [] } };
+    if (u.pathname === "/api/session-logs/pending") return { body: { from: "2026-09-21", to: "2026-10-04", items: [] } };
+    if (u.pathname === "/api/progression/subjects/sub1") return { body: detail };
+    if (u.pathname === "/api/session-logs/carry-forward") return { body: carryBody(items, note) };
+    return extra?.(u, init);
+  };
+  const open = async () => {
+    await userEvent.click(await screen.findByRole("button", { name: /Log session for Database Concepts, Mirai Batch A, 5 Oct/ }));
+    return screen.findByRole("dialog", { name: "Log a session" });
+  };
+
+  it("asks the API for the same subject and date, and shows each unfinished item with remaining work and its original date", async () => {
+    const calls = mockApi(withCarry([c2, c3], "Finish Topic 2 proof"));
+    renderAt("/session-logs", "faculty", { "prospectus.faculty": "f1" });
+    const dialog = await open();
+    const section = await within(dialog).findByRole("region", { name: "Carry forward from previous session" });
+    expect(within(section).getByText(/50% done · 1.5 h left · from 28 Sep/)).toBeInTheDocument();
+    expect(within(section).getByText(/Left over · 3 h · from 28 Sep/)).toBeInTheDocument();
+    expect(within(section).getByText(/Finish Topic 2 proof/)).toBeInTheDocument();
+    expect(calls.some((c) => c.path === "/api/session-logs/carry-forward?subjectId=sub1&heldOn=2026-10-05")).toBe(true);
+    expect(within(dialog).getAllByText("carried").length).toBeGreaterThan(0); // pinned & badged in the topic list too
+  });
+
+  it("prefills the form (all selected, note composed) without marking anything completed, and saves the selection as leftover", async () => {
+    const calls = mockApi(withCarry([c2, c3], null, (u, init) => (u.pathname === "/api/session-logs" && init?.method === "POST" ? { status: 201, body: { log: loggedRow(), progress: { before: summary(), after: summary() } } } : undefined)));
+    renderAt("/session-logs", "faculty", { "prospectus.faculty": "f1" });
+    const dialog = await open();
+    const box2 = await within(dialog).findByRole("checkbox", { name: "Carry forward Topic 2" });
+    const box3 = within(dialog).getByRole("checkbox", { name: "Carry forward Topic 3" });
+    expect(box2).toBeChecked(); expect(box3).toBeChecked();
+    for (const g of ["Topic 2"]) expect(within(within(dialog).getByRole("group", { name: `${g} progress this session` })).getByRole("button", { name: "Not today" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(box3); // select only some items
+    const t1 = within(dialog).getByRole("group", { name: "Topic 1 progress this session" });
+    await userEvent.click(within(t1).getByRole("button", { name: "Done" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save log" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    const post = calls.find((c) => c.method === "POST" && c.path === "/api/session-logs")!;
+    expect(post.body).toMatchObject({ outcome: "COMPLETED", covered: [{ topicId: "t1", completionPct: 100 }], leftover: ["t2"], skipped: [] });
+    expect((post.body as { carryForward: string }).carryForward).toBe("Carried from 2026-09-28: Topic 2 (50% done, 1.5 h left)");
+  });
+
+  it("a carried topic that is taught in this session is recorded as covered, never as both covered and leftover", async () => {
+    const calls = mockApi(withCarry([c2], null, (u, init) => (u.pathname === "/api/session-logs" && init?.method === "POST" ? { status: 201, body: { log: loggedRow(), progress: { before: summary(), after: summary() } } } : undefined)));
+    renderAt("/session-logs", "faculty", { "prospectus.faculty": "f1" });
+    const dialog = await open();
+    await within(dialog).findByRole("checkbox", { name: "Carry forward Topic 2" });
+    await userEvent.click(within(within(dialog).getByRole("group", { name: "Topic 2 progress this session" })).getByRole("button", { name: "Done" }));
+    expect(within(dialog).getByText(/Being covered in this session/)).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save log" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    const post = calls.find((c) => c.method === "POST" && c.path === "/api/session-logs")!;
+    expect(post.body).toMatchObject({ covered: [{ topicId: "t2", completionPct: 100 }], leftover: [] });
+  });
+
+  it("changes nothing when there is no unfinished work: no section, no extra fields", async () => {
+    mockApi(withCarry([]));
+    renderAt("/session-logs", "faculty", { "prospectus.faculty": "f1" });
+    const dialog = await open();
+    await within(dialog).findByText(/09:00–10:00 · 1 h scheduled/);
+    expect(within(dialog).queryByRole("region", { name: "Carry forward from previous session" })).not.toBeInTheDocument();
+    expect(within(dialog).queryByText("carried")).not.toBeInTheDocument();
+  });
+
+  it("does not offer carry-forward for a cancelled session", async () => {
+    mockApi(withCarry([c2]));
+    renderAt("/session-logs", "faculty", { "prospectus.faculty": "f1" });
+    const dialog = await open();
+    await within(dialog).findByRole("region", { name: "Carry forward from previous session" });
+    await userEvent.click(within(dialog).getByRole("radio", { name: "Cancelled" }));
+    expect(within(dialog).queryByRole("region", { name: "Carry forward from previous session" })).not.toBeInTheDocument();
+  });
+
+  it("when the lookup fails the dialog still works and says so quietly", async () => {
+    mockApi((u, init) => (u.pathname === "/api/session-logs/carry-forward" ? { status: 500, body: { error: "internal_error", message: "boom" } } : withCarry([])(u, init)));
+    renderAt("/session-logs", "faculty", { "prospectus.faculty": "f1" });
+    const dialog = await open();
+    expect(await within(dialog).findByText(/Carry-forward suggestions could not be loaded/)).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Save log" })).toBeEnabled();
+  });
+});

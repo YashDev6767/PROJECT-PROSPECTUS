@@ -330,3 +330,27 @@ export interface ReportsResponse {
   examReadiness?: { items: ExamReadinessReportItem[]; summary: ExamReadinessReportSummary };
   campusTrack?: { items: CampusTrackSummaryReportItem[]; summary: CampusTrackSummarySummary };
 }
+
+/* ---------- Smart carry-forward (unfinished work from the previous teaching session) ---------- */
+export interface CarryItem { topicId: string; title: string; unitTitle: string; plannedHours: number; reason: "in_progress" | "leftover"; completionPct: number; remainingHours: number; fromDate: string; fromLogId: string }
+export interface CarryForwardResponse { subjectId: string; heldOn: string; source: { logId: string; heldOn: string; outcome: Outcome } | null; items: CarryItem[]; note: string | null }
+
+/* ---------- Student learning portal (read-only, one batch) ---------- */
+export type StudentStatusKey = "on_track" | "keep_an_eye" | "needs_attention" | "complete" | "no_data";
+export interface StudentStatus { key: StudentStatusKey; label: string }
+export interface StudentSubject {
+  id: string; code: string; name: string; status: StudentStatus; coveragePct: number | null; hoursInScope: number; coveredHours: number; remainingHours: number;
+  coveredTopics: Array<{ title: string; unitTitle: string; completionPct: number }>;
+  upcomingTopics: Array<{ title: string; unitTitle: string; completionPct: number; expectedBy: string | null }>;
+}
+export interface StudentExam {
+  id: string; name: string; typeLabel: string; startsOn: string; endsOn: string; daysToStart: number; phase: "upcoming" | "in_progress"; classesEnd: string;
+  subjects: Array<{ name: string; code: string; status: StudentStatus; coveragePct: number | null; remainingHours: number; teachingHoursLeft: number | null; scope: string; scopeTopics: Array<{ title: string; unitTitle: string; completionPct: number }> }>;
+}
+export interface StudentPortalData {
+  asOf: string; batch: { id: string; name: string }; campusId: string; track: Track; semester: { name: string; startsOn: string; endsOn: string };
+  overview: { subjectCount: number; assessedSubjects: number; overallCoveragePct: number | null; coveredHours: number; hoursInScope: number; needAttention: number };
+  subjects: StudentSubject[];
+  upcomingClasses: Array<{ date: string; startTime: string; endTime: string; subjectName: string; subjectCode: string; room: string | null; kind: "scheduled" | "makeup" }>;
+  exams: StudentExam[];
+}

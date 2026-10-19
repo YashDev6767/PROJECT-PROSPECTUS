@@ -35,7 +35,7 @@ export function needDb(db: Database) {
 }
 
 /** Who is calling, as established by the server: a verified session cookie, or (only when allowed) the spoofable demo headers. */
-export interface Identity { source: "session" | "demo"; role: DemoRole; facultyId: string | null; email: string | null }
+export interface Identity { source: "session" | "demo"; role: DemoRole; facultyId: string | null; batchId: string | null; email: string | null }
 
 /**
  * Authorization: the signed session wins; the demo `X-Demo-Role` / `X-Demo-Faculty` headers are honoured only when the operator allows
@@ -50,9 +50,12 @@ export const requireCapability = (capability: Capability): RequestHandler => (re
   if (!can(identity.role, capability)) return next(new HttpError(403, "forbidden", `The ${identity.role.replace("_", " ")} role cannot perform this action (${capability}).`));
   res.locals.role = identity.role;
   res.locals.facultyId = identity.facultyId;
+  res.locals.batchId = identity.batchId;
   next();
 };
 /** The faculty member the caller acts as (verified for sessions; self-declared for demo headers). Call after requireCapability. */
+/** The batch a student session is bound to (verified for sessions; self-declared via X-Demo-Batch in development demo mode only). */
+export const callerBatch = (res: Response): string | null => (res.locals.batchId as string | null | undefined) ?? null;
 export const callerFaculty = (res: Response): string | null => (res.locals.facultyId as string | null | undefined) ?? null;
 export const callerRole = (res: Response): DemoRole | null => (res.locals.role as DemoRole | undefined) ?? null;
 

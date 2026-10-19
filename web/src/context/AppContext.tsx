@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { fetchAuthConfig, fetchDashboard, fetchSession, setApiFaculty, setApiRole, setApiSession, signInRequest, signOutRequest, type AuthConfig, type SessionUser } from "../lib/api";
+import { fetchAuthConfig, fetchDashboard, fetchSession, setApiBatch, setApiFaculty, setApiRole, setApiSession, signInRequest, signOutRequest, type AuthConfig, type SessionUser } from "../lib/api";
 import { can as canDo, type Capability } from "../lib/permissions";
 import { roles, type Role } from "../lib/roles";
 import type { Campus, Dashboard } from "../lib/types";
@@ -22,6 +22,9 @@ interface AppContextValue {
   /** Demo identity for faculty logging (not verified — see README). */
   facultyId: string | null;
   setFacultyId: (id: string | null) => void;
+  /** The batch a student sees: from the signed session, or (development demo mode only) the one picked on the My learning page. */
+  batchId: string | null;
+  setBatchId: (id: string | null) => void;
   campusId: string | null;
   setCampusId: (id: string) => void;
   campuses: Campus[];
@@ -47,9 +50,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [dashboard, setDashboard] = useState<DashboardState>({ status: "loading" });
   const [nonce, setNonce] = useState(0);
   const [pickedFaculty, setFacultyIdState] = useState<string | null>(() => safeGet("prospectus.faculty"));
+  const [pickedBatch, setPickedBatch] = useState<string | null>(() => safeGet("prospectus.batch"));
+  const batchId = user ? user.batchId ?? null : pickedBatch;
   const facultyId = user ? user.facultyId : pickedFaculty;
   setApiSession(user !== null);
   setApiRole(role);
+  setApiBatch(!user && role === "student" ? pickedBatch : null);
   setApiFaculty(role === "faculty" ? facultyId : null); // before any child effect fetches, so requests carry the current demo role
 
   // Who am I? (a signed cookie, if any) and which access modes does the server allow? Unknown/older servers = demo mode, as before.
@@ -86,12 +92,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     can: (capability) => canDo(role, capability),
     setRole: (r) => { safeSet("prospectus.role", r); setRoleState(r); },
     campusId: dashboard.status === "ready" ? dashboard.data.context.campus.id : campusId,
+    batchId, setBatchId: (id) => { if (id) safeSet("prospectus.batch", id); else { try { localStorage.removeItem("prospectus.batch"); } catch { /* optional */ } } setPickedBatch(id); },
     facultyId, setFacultyId: (id) => { if (id) safeSet("prospectus.faculty", id); setFacultyIdState(id); },
     setCampusId: (id) => { safeSet("prospectus.campus", id); setCampusId(id); },
     campuses,
     dashboard,
     reload: () => setNonce((n) => n + 1),
-  }), [auth, role, facultyId, campusId, campuses, dashboard]);
+  }), [auth, role, facultyId, batchId, campusId, campuses, dashboard]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

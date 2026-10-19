@@ -35,7 +35,7 @@ describe("restricted evaluation sign-in", () => {
   it("signs in with a correct password and sets an HttpOnly, SameSite=Lax cookie (Secure in production)", async () => {
     const res = await login(app(), "ADMIN@msot.test", "admin-passphrase-1"); // email is case-insensitive
     expect(res.status).toBe(200);
-    expect(res.body.user).toEqual({ email: "admin@msot.test", role: "admin", name: "Test Admin", facultyId: null });
+    expect(res.body.user).toEqual({ email: "admin@msot.test", role: "admin", name: "Test Admin", facultyId: null, batchId: null });
     expect(res.body.user.passwordHash).toBeUndefined();
     const flags = String(res.headers["set-cookie"]);
     expect(flags).toMatch(/HttpOnly/); expect(flags).toMatch(/SameSite=Lax/); expect(flags).toMatch(/Max-Age=28800/); expect(flags).not.toMatch(/Secure/);
