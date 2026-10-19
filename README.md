@@ -61,7 +61,7 @@ npm run test:integration  # API tests against real PostgreSQL (uses TEST_DATABAS
 npx playwright install chromium   # once
 npm run test:e2e          # browser tests on :5183/:4010 against TEST_DATABASE_URL (reset + re-seeded first)
 npm run build             # type-check + production builds of api and web
-npm start                 # run the built API
+npm start                 # run the built API only (web/dist is static: serve it with a web server / reverse proxy; for the demo use npm run dev)
 ```
 `npm run db:embedded` creates both `prospectus` and `prospectus_test` databases. Integration and e2e tests skip themselves when `TEST_DATABASE_URL` is unset.
 

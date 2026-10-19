@@ -34,17 +34,26 @@ Audit date: 19 Oct 2026. Every status below was checked against the current code
 | Command | Result |
 |---|---|
 | `npm run typecheck` | no errors |
-| `npm test` | **192 API + 180 web = 372 passed**, 0 failed |
+| `npm test` | **194 API + 180 web = 374 passed**, 0 failed |
 | `npm run test:integration` (real PostgreSQL; applies migrations to the test DB) | **82 passed**, 5 files |
 | `npm run build` | succeeded (API + web) |
 | `npx playwright test` | **61 passed, 1 skipped, 0 failed** (desktop + mobile viewports) |
 | Live API probe in production mode (4 accounts) | read gate, role checks, logout revocation, CORS, error shape as above |
 | Browser sweep (12 routes × 390/820/1440 px), student role | no console errors apart from one defect fixed earlier; no overflow |
 
-Not tested: screen readers, browsers other than Chromium, a hosted deployment, a fresh-clone install on another machine, load/performance.
+Not tested: screen readers or any accessibility audit, browsers other than Chromium, a hosted deployment, load/performance, installation on a different machine or OS (the fresh clone below ran on the same Mac).
+
+### Fresh-clone rehearsal (commit `aef9b22`, isolated ports/database)
+Cloned the repository into a temporary directory, `npm install` (generates the Prisma client), `.env` from `.env.example` with rehearsal-only values, embedded PostgreSQL on a separate port, `db:deploy` (2 migrations applied to an empty database), `db:seed` (10 semesters, 44 subjects, 126 timetable entries, 1,162 session logs; second run inserts 0), dev servers and a production build with `npm start` (API only). In the clone: typecheck clean, **194 + 180 unit, 82 integration, 61 e2e passed (1 skipped)**, build succeeded.
+Judging workflow in that clone (browser + API, disposable data): admin sign-in; overview with worst subject; hour-weighted coverage recomputed independently for 42 subjects across all four campuses (0 mismatches); a University-track class (67-character timetable id) logged through the UI; completed log lowers remaining hours by exactly the topic's hours; cancelled and skipped classes each lower available hours by the session's hours and leave coverage unchanged; Exam Readiness shows scope and coverage matching the API; all five report types export valid formula-safe CSV; a student session gets 403 on writes, on a spoofed admin header and on reports; a faculty session gets 403 `not_your_subject` on another faculty member's subject; anonymous requests get 401; in production mode anonymous data reads are 401 and a logged-out session stops working.
+Two defects were found by this rehearsal and fixed: a fresh clone had no generated Prisma client (now a `postinstall`), and 36 of 126 seeded timetable ids (all University track) exceeded the API's 64-character id limit so those classes could not be logged (limit now 128; regression test over every seeded id).
+`npm start` serves **only the API**; the built web app in `web/dist` is static files that must be served by a web server or reverse proxy. For the judging demo use `npm run dev`.
 
 ## 4. Demo coverage
 The seed covers four campuses (HI-Tech, Ratnam, RGIB, JUJ) × two tracks (Mirai, University), each with an active Semester 3 plus completed Semester 2 and upcoming Semester 4, four subjects per batch with syllabi, timetables, calendar, exams and session logs (completed, in progress, cancelled with make-up, merged). It is sample data, labelled **Sample**, and drifts toward Tight/Danger as the date passes 15 Oct 2026 (the logs stop there).
+
+## Submission artefacts
+Present: README, `ARCHITECTURE.md`, this file, `JUDGING_WALKTHROUGH.md`, seed data for four campuses × two tracks, automated test suites. **Not present:** demo video, hosted URL, Dockerfile/CI, load-test or accessibility-audit evidence, cross-browser evidence.
 
 ## 5. Priorities
 - **P0:** none open. (Closed this audit: demo-header parsing, anonymous reads in production.)
