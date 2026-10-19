@@ -186,7 +186,7 @@ export function Syllabus() {
   const notFound = res.error instanceof ApiError && res.error.status === 404;
   return (
     <div className="space-y-6">
-      <Link to="/subjects" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent-text hover:underline"><ArrowLeft className="size-4" aria-hidden /> Back to Subjects</Link>
+      <Link to="/subjects" className="inline-flex min-h-11 items-center gap-1.5 text-sm lg:min-h-0 font-semibold text-accent-text hover:underline"><ArrowLeft className="size-4" aria-hidden /> Back to Subjects</Link>
       {notFound ? <Card><EmptyState title="Subject not found">It may have been deleted. Go back to the subjects list.</EmptyState></Card>
         : <Boundary res={res} lines={4}>{(data) => <Editor data={data} writable={can("academic:write")} reload={res.reload} />}</Boundary>}
     </div>

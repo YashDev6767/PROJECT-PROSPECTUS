@@ -25,8 +25,12 @@ export function dashboardRouter({ db, now, settings, today }: Deps): Router {
         try {
           const live = await buildLiveDashboard(db.prisma, parsed.data.campusId, now(), today(), settings);
           if (live) { res.json(live); return; }
+          // a connected database with no semesters for this campus: the labelled demo dataset below (dataSource "demo")
         } catch (error) {
-          console.error("Live dashboard failed, falling back to demo data:", error);
+          // Never substitute demo numbers for a failed live computation: that would look like real, reassuring data.
+          console.error("Live dashboard failed:", error);
+          res.status(503).json({ error: "dashboard_unavailable", message: "The live dashboard could not be computed right now, so no academic status is shown. This is a data problem, not an all-clear." });
+          return;
         }
       }
       const data = buildDashboard(

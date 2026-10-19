@@ -172,12 +172,12 @@ function LogForm({ item, detail, existing, sameDayLogs, onClose, onSaved }: { it
       <Field label={outcome === "CANCELLED" || outcome === "SKIPPED" ? "Reason" : "Notes (optional)"} error={err.notes}><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} placeholder={outcome === "CANCELLED" ? "e.g. Faculty on leave" : ""} /></Field>
       {existing && <Field label="Why are you correcting this log?" error={err.correctionNote} hint="Required — kept in the log's history"><Input value={correction} onChange={(e) => setCorrection(e.target.value)} maxLength={500} /></Field>}
 
+      <p className="text-xs text-fg-subtle">Current status of this subject: <RiskBadge status={detail.progress.risk} /> <span className="ml-1">{detail.progress.coveragePct ?? 0}% covered</span> {existing && <Badge>revision {existing.revision}</Badge>}</p>
       <SubmitFeedback state={s} />
-      <div className="sticky bottom-0 -mx-5 -mb-5 flex justify-end gap-2 border-t border-line bg-surface/90 px-5 py-3 backdrop-blur">
+      <div className="sticky bottom-0 -mx-5 -mb-5 mt-5 flex justify-end gap-2 border-t border-line bg-surface/90 px-5 py-3 backdrop-blur">
         <Button onClick={onClose}>Cancel</Button>
         <Button type="submit" variant="primary" disabled={s.busy}><CheckCircle2 className="size-4" aria-hidden /> {s.busy ? "Saving…" : existing ? "Save correction" : "Save log"}</Button>
       </div>
-      <p className="text-xs text-fg-subtle">Current status of this subject: <RiskBadge status={detail.progress.risk} /> <span className="ml-1">{detail.progress.coveragePct ?? 0}% covered</span> {existing && <Badge>revision {existing.revision}</Badge>}</p>
     </form>
   );
 }

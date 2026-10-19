@@ -96,13 +96,13 @@ test("Magic UI theme toggler: one click flips the theme (with its view-transitio
   await expect(html(page)).not.toHaveClass(/dark/);
 });
 
-test("Originkit call-to-action on the Overview navigates in-app, and dashboard numbers settle on exact values (Magic UI ticker)", async ({ page, isMobile }) => {
+test("Originkit call-to-action on the Overview navigates in-app, and the dashboard shows the API's exact numbers", async ({ page, isMobile }) => {
   test.skip(isMobile, "the pill CTA is desktop-only; mobile uses the bottom bar");
   await page.addInitScript(() => { localStorage.setItem("prospectus.role", "admin"); localStorage.setItem("prospectus.campus", "hi-tech"); });
   await page.goto("/");
   const api = await (await page.request.get("/api/dashboard?campusId=hi-tech")).json() as { metrics: { overallCoveragePct: number } };
   const coverage = page.getByText("Syllabus covered").locator("xpath=following-sibling::p[1]");
-  // the ticker counts up from 0 and must come to rest on exactly the API's value
+  // the figure is rendered statically and must equal the API value
   await expect(coverage).toHaveText(`${api.metrics.overallCoveragePct.toFixed(1)}%`, { timeout: 10_000 });
   await page.getByRole("button", { name: "Log a session" }).first().click();
   await expect(page).toHaveURL(/\/session-logs$/);

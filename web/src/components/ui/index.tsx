@@ -1,13 +1,9 @@
 import { AlertTriangle, BadgeCheck, ChevronDown, CircleCheck, CircleHelp, Hourglass, Inbox, TriangleAlert, type LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useId, useState, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from "react";
-import { Link, matchPath, useLocation, type LinkProps } from "react-router-dom";
-import { navItems } from "../../lib/roles";
+import { Link, type LinkProps } from "react-router-dom";
 import type { RiskStatus } from "../../lib/types";
-import { useTheme } from "../../context/ThemeContext";
-import SpotlightCard from "../vendor/reactbits/SpotlightCard";
-import { Metric } from "./Metric";
-import { BlurFade } from "../vendor/magicui/blur-fade";
+import { spring } from "../../lib/motion";
 
 import { cx } from "./cx";
 export { cx };
@@ -15,12 +11,12 @@ export { cx };
 /* ---------- Button ---------- */
 type Variant = "primary" | "secondary" | "ghost";
 const variants: Record<Variant, string> = {
-  primary: "primary-glow bg-accent-solid text-on-accent shadow-soft hover:-translate-y-px hover:bg-accent-solid-hover hover:shadow-pop active:translate-y-0 active:bg-accent-solid-active",
-  secondary: "border border-line-strong bg-surface text-fg-2 hover:border-accent/60 hover:bg-accent-soft/60 hover:text-accent-soft-fg active:bg-accent-soft",
-  ghost: "text-fg-muted hover:bg-accent-soft hover:text-accent-text active:bg-accent-muted",
+  primary: "bg-accent-solid text-on-accent hover:bg-accent-solid-hover active:bg-accent-solid-active",
+  secondary: "border border-line-strong bg-surface text-fg-2 hover:bg-surface-3 active:bg-surface-3",
+  ghost: "text-fg-muted hover:bg-surface-3 hover:text-fg active:bg-surface-3",
 };
-// 150 ms colour/press feedback; disabled controls neither lift nor press
-const buttonBase = "inline-flex min-h-11 select-none items-center lg:min-h-10 justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition-[background-color,border-color,color,transform,box-shadow] duration-150 ease-out active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50";
+// 120 ms colour feedback and a 1 px press; no lift, glow or shadow. Disabled controls neither react nor press.
+const buttonBase = "inline-flex min-h-11 select-none items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-[background-color,border-color,color,transform] duration-[var(--dur-fast)] ease-out active:translate-y-px disabled:pointer-events-none disabled:opacity-50 lg:min-h-10";
 
 export function Button({ variant = "secondary", className, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
   return <button type="button" className={cx(buttonBase, variants[variant], className)} {...rest} />;
@@ -32,9 +28,9 @@ export function ButtonLink({ variant = "secondary", className, ...rest }: LinkPr
 /* ---------- Card ---------- */
 export function Card({ title, description, action, children, className, ...rest }: Omit<HTMLAttributes<HTMLElement>, "title"> & { title?: string; description?: string; action?: ReactNode }) {
   return (
-    <section className={cx("surface p-6", className)} aria-label={title} {...rest}>
+    <section className={cx("surface p-5 sm:p-6", className)} aria-label={title} {...rest}>
       {title && (
-        <header className="mb-5 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <header className="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           <div className="min-w-0">
             <h2 className="text-base font-semibold tracking-tight text-fg">{title}</h2>
             {description && <p className="mt-1 text-sm text-fg-subtle">{description}</p>}
@@ -58,7 +54,7 @@ const tones = {
   info: "bg-info-soft text-info",
 };
 export function Badge({ tone = "neutral", icon: Icon, children }: { tone?: keyof typeof tones; icon?: LucideIcon; children: ReactNode }) {
-  return <span className={cx("inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold", tones[tone])}>{Icon && <Icon className="size-3 shrink-0" aria-hidden />}{children}</span>;
+  return <span className={cx("inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium", tones[tone])}>{Icon && <Icon className="size-3 shrink-0" aria-hidden />}{children}</span>;
 }
 
 /* ---------- Progress ---------- */
@@ -68,7 +64,7 @@ export function Progress({ value, expected, label }: { value: number; expected?:
   useEffect(() => { const id = requestAnimationFrame(() => setW(value)); return () => cancelAnimationFrame(id); }, [value]);
   return (
     <div className="relative h-2 w-full rounded-full bg-surface-3" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value)}>
-      <div className="h-full rounded-full bg-accent transition-[width] duration-500 ease-out" style={{ width: `${w}%` }} />
+      <div className="h-full rounded-full bg-accent transition-[width] duration-[var(--dur-slow)] ease-out" style={{ width: `${w}%` }} />
       {expected !== undefined && <div className="absolute -top-0.5 h-3 w-0.5 rounded bg-fg-2" style={{ left: `${expected}%` }} title={`Planned: ${expected}%`} />}
     </div>
   );
@@ -80,7 +76,7 @@ export const Skeleton = ({ className }: { className?: string }) => <div aria-hid
 export function EmptyState({ icon: Icon = Inbox, title, children }: { icon?: LucideIcon; title: string; children?: ReactNode }) {
   return (
     <div className="pop-in flex flex-col items-center gap-2 rounded-xl border border-dashed border-line-strong px-4 py-10 text-center">
-      <span className="grid size-11 place-items-center rounded-full bg-accent-soft text-accent-text" aria-hidden><Icon className="size-5" /></span>
+      <span className="grid size-11 place-items-center rounded-full bg-surface-3 text-fg-subtle" aria-hidden><Icon className="size-5" /></span>
       <p className="text-sm font-semibold text-fg">{title}</p>
       {children && <p className="max-w-sm text-sm leading-relaxed text-fg-subtle">{children}</p>}
     </div>
@@ -97,18 +93,30 @@ export function ErrorState({ message, onRetry, title = "Couldn't load the dashbo
   );
 }
 
-/* ---------- Stat tile ---------- */
-export function StatTile({ label, value, hint, numeric }: { label: string; value: string; hint: string; /** when given, the value counts up to it (Magic UI Number Ticker) */ numeric?: { value: number; decimals?: number; prefix?: string; suffix?: string } }) {
-  const { resolved } = useTheme();
+/* ---------- Stat: a figure with a label and a hint. No box — pages group several in a divided strip (StatStrip). ---------- */
+export function Stat({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    // React Bits SpotlightCard: the pointer-following light is its own effect; surface, border and shadow come from the theme tokens
-    <SpotlightCard theme={resolved} spotlightColor="var(--accent)" intensity={0.22} spotlightSize={200} softness={0.8} borderGlow={0.7} flare={false}
-      className="rounded-card px-5 py-4 backdrop-blur-md"
-      style={{ "--spotlight-card-surface": "color-mix(in srgb, var(--surface) var(--surface-alpha), transparent)", "--spotlight-card-border": "var(--line)", "--spotlight-card-shadow": "var(--sh-soft)" } as React.CSSProperties}>
+    <div className="px-5 py-4 first:pl-0">
       <p className="text-xs font-medium text-fg-subtle">{label}</p>
-      <p className={cx("mt-1 text-2xl font-semibold tracking-tight tabular-nums", "text-fg")}>{numeric ? <Metric {...numeric} /> : value}</p>
+      <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-fg">{value}</p>
       <p className="mt-0.5 text-xs text-fg-subtle">{hint}</p>
-    </SpotlightCard>
+    </div>
+  );
+}
+export function StatStrip({ children, label }: { children: ReactNode; label: string }) {
+  return <div role="list" aria-label={label} className="grid grid-cols-2 divide-x divide-line border-y border-line lg:grid-cols-4 [&>*]:border-b-0 max-lg:[&>*:nth-child(n+3)]:border-t max-lg:[&>*:nth-child(n+3)]:border-line [&>*:nth-child(odd)]:max-lg:pl-0 lg:[&>*:first-child]:pl-0">{children}</div>;
+}
+
+/* ---------- Section: a heading with a hairline, instead of wrapping every group in a card ---------- */
+export function Section({ title, description, action, children, className }: { title: string; description?: string; action?: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <section aria-label={title} className={className}>
+      <header className="mb-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-1 border-b border-line pb-2.5">
+        <div className="min-w-0"><h2 className="text-base font-semibold tracking-tight text-fg">{title}</h2>{description && <p className="mt-0.5 text-sm text-fg-subtle">{description}</p>}</div>
+        {action}
+      </header>
+      {children}
+    </section>
   );
 }
 
@@ -119,8 +127,8 @@ export function Tabs<T extends string>({ value, onChange, tabs, label }: { value
     <div role="tablist" aria-label={label} className="inline-flex rounded-xl border border-line bg-surface-3/70 p-1">
       {tabs.map((t) => (
         <button key={t.id} role="tab" type="button" aria-selected={value === t.id} onClick={() => onChange(t.id)}
-          className={cx("relative min-h-9 rounded-lg px-3.5 text-sm font-medium transition-colors duration-150", value === t.id ? "text-accent-soft-fg" : "text-fg-muted hover:text-fg")}>
-          {value === t.id && <motion.span layoutId={`tab-pill-${group}`} transition={{ type: "spring", stiffness: 520, damping: 40 }} className="absolute inset-0 rounded-lg bg-accent-soft shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_35%,transparent)]" />}
+          className={cx("relative min-h-11 rounded-lg px-3.5 lg:min-h-9 text-sm font-medium transition-colors duration-150", value === t.id ? "text-accent-soft-fg" : "text-fg-muted hover:text-fg")}>
+          {value === t.id && <motion.span layoutId={`tab-pill-${group}`} transition={spring} className="absolute inset-0 rounded-lg bg-accent-soft shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_35%,transparent)]" />}
           <span className="relative">{t.label}</span>
         </button>
       ))}
@@ -130,33 +138,25 @@ export function Tabs<T extends string>({ value, onChange, tabs, label }: { value
 
 /* ---------- Page header ---------- */
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
-  const { pathname } = useLocation();
-  const Icon = navItems.filter((n) => n.path !== "/" || pathname === "/").find((n) => matchPath({ path: n.path, end: n.path === "/" }, pathname) || (n.path !== "/" && pathname.startsWith(n.path)))?.icon;
-  // Flat heading row (no card). The title block fades in with Magic UI's Blur Fade.
   return (
-    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 pb-1">
-      <BlurFade direction="up" offset={8} duration={0.5}>
-        <div className="flex items-center gap-4">
-          {Icon && <span className="hidden size-12 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent-text ring-1 ring-inset ring-accent/20 sm:grid" aria-hidden><Icon className="size-[22px]" strokeWidth={1.75} /></span>}
-          <div>
-            <h1 className="text-3xl font-semibold leading-tight tracking-tight text-fg">{title}</h1>
-            {subtitle && <p className="mt-1.5 text-sm text-fg-subtle">{subtitle}</p>}
-          </div>
-        </div>
-      </BlurFade>
-      {actions && <div className="flex flex-wrap items-center gap-2.5">{actions}</div>}
+    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-semibold leading-tight tracking-tight text-fg sm:text-3xl">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-fg-subtle">{subtitle}</p>}
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }
 
-export const SampleBadge = () => <span title="Demonstration data — not real MSOT data" className="inline-flex items-center rounded-full bg-warn-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-warn">Sample</span>;
+export const SampleBadge = () => <span title="Demonstration data — not real MSOT data" className="text-[11px] font-medium uppercase tracking-wide text-warn">Sample</span>;
 
 /* ---------- Table ---------- */
 export const tableClasses = {
   wrap: "surface overflow-x-auto",
-  table: "w-full min-w-[40rem] text-left text-sm [&_tbody_tr]:transition-colors [&_tbody_tr]:duration-150 [&_tbody_tr:hover]:bg-surface-2 [&_tbody_tr:last-child_td]:border-b-0",
-  th: "whitespace-nowrap border-b border-line bg-surface-2 px-3.5 py-2.5 text-xs font-semibold uppercase tracking-wide text-fg-subtle",
-  td: "border-b border-line/60 px-3.5 py-3 align-middle text-fg-2",
+  table: "w-full min-w-[40rem] text-left text-sm [&_tbody_tr]:transition-colors [&_tbody_tr]:duration-[var(--dur-fast)] [&_tbody_tr:hover]:bg-surface-2 [&_tbody_tr:last-child_td]:border-b-0",
+  th: "whitespace-nowrap border-b border-line px-3.5 py-2.5 text-xs font-medium text-fg-subtle",
+  td: "border-b border-line/60 px-3.5 py-2.5 align-middle text-fg-2",
 };
 
 /* ---------- Risk badge: colour + icon + label, so statuses stay distinguishable without colour ---------- */
@@ -182,10 +182,10 @@ export function Disclosure({ summary, children, className }: { summary: string; 
   return (
     <div className={className}>
       <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)}
-        className="relative z-10 inline-flex items-center gap-1 rounded-md py-1 text-xs font-medium text-accent-text transition-colors hover:text-fg">
-        <ChevronDown aria-hidden className={cx("size-3.5 transition-transform duration-200", open && "rotate-180")} /> {summary}
+        className="relative z-10 -ml-1 inline-flex min-h-11 items-center gap-1 rounded-md px-1 text-xs font-medium text-accent-text transition-colors hover:text-fg lg:min-h-8">
+        <ChevronDown aria-hidden className={cx("size-3.5 transition-transform duration-[var(--dur-base)]", open && "rotate-180")} /> {summary}
       </button>
-      <div id={id} className={cx("grid transition-[grid-template-rows,opacity] duration-250 ease-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+      <div id={id} className={cx("grid transition-[grid-template-rows,opacity] duration-[var(--dur-base)] ease-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
         <div className="overflow-hidden"><div className="pt-1.5">{children}</div></div>
       </div>
     </div>

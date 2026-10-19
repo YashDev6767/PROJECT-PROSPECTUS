@@ -92,11 +92,11 @@ export function Semesters() {
                 </td>
                 {writable && <td className={tableClasses.td}>
                   <div className="flex flex-wrap gap-1.5">
-                    <Button className="min-h-9 px-3" onClick={() => setEditing(s)} aria-label={`Edit ${s.name} ${trackLabels[s.track]}`}><Pencil className="size-4" aria-hidden /> Edit</Button>
+                    <Button className="min-h-11 px-3 lg:min-h-9" onClick={() => setEditing(s)} aria-label={`Edit ${s.name} ${trackLabels[s.track]}`}><Pencil className="size-4" aria-hidden /> Edit</Button>
                     {s.isActive
-                      ? <Button className="min-h-9 px-3" aria-label={`Deactivate ${s.name}`} onClick={async () => { await api.post(`/api/semesters/${s.id}/deactivate`); toast(`${s.name} deactivated`); res.reload(); }}><Power className="size-4" aria-hidden /> Deactivate</Button>
-                      : s.status !== "completed" && <Button className="min-h-9 px-3" aria-label={`Activate ${s.name} ${trackLabels[s.track]}`} onClick={() => setActivating(s)}><Power className="size-4" aria-hidden /> Activate</Button>}
-                    <Button className="min-h-9 px-3 text-danger" onClick={() => setDeleting(s)} aria-label={`Delete ${s.name} ${trackLabels[s.track]}`}><Trash2 className="size-4" aria-hidden /></Button>
+                      ? <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9" aria-label={`Deactivate ${s.name}`} onClick={async () => { await api.post(`/api/semesters/${s.id}/deactivate`); toast(`${s.name} deactivated`); res.reload(); }}><Power className="size-4" aria-hidden /> Deactivate</Button>
+                      : s.status !== "completed" && <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9" aria-label={`Activate ${s.name} ${trackLabels[s.track]}`} onClick={() => setActivating(s)}><Power className="size-4" aria-hidden /> Activate</Button>}
+                    <Button className="min-h-11 min-w-11 px-3 text-danger lg:min-h-9 lg:min-w-9" onClick={() => setDeleting(s)} aria-label={`Delete ${s.name} ${trackLabels[s.track]}`}><Trash2 className="size-4" aria-hidden /></Button>
                   </div>
                 </td>}
               </tr>))}

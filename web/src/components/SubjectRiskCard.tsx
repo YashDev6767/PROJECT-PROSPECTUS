@@ -18,16 +18,16 @@ export function SubjectRiskCard({ row, live }: { row: SubjectRow; live: boolean 
     : `${hoursText(row.hoursBehind)} behind plan${row.daysToExam != null ? ` with ${row.daysToExam} days to the exam` : ""}.`;
 
   return (
-    <article className={cx("lift group relative flex min-w-0 flex-col gap-5 rounded-2xl border border-line bg-surface-2/60 p-5 before:absolute before:inset-y-5 before:left-0 before:w-[3px] before:rounded-r-full",
+    <article className={cx("lift cv-auto group relative flex min-w-0 flex-col gap-4 rounded-card border border-line bg-surface/70 p-4 pl-5 before:absolute before:inset-y-4 before:left-0 before:w-[3px] before:rounded-r-full",
       severe ? "before:bg-danger" : "before:bg-warn")}>
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-[0.9375rem] font-semibold leading-snug text-fg [overflow-wrap:anywhere]">
+          <h3 className="text-[0.9375rem] font-medium leading-snug text-fg [overflow-wrap:anywhere]">
             {live
-              ? <Link to={`/subjects/${row.id}`} className="outline-offset-4 after:absolute after:inset-0 after:rounded-2xl after:content-[''] hover:text-accent-text">{row.name}</Link>
+              ? <Link to={`/subjects/${row.id}`} className="-my-2.5 inline-block py-2.5 outline-offset-4 after:absolute after:inset-0 after:rounded-card after:content-[''] hover:text-accent-text">{row.name}</Link>
               : row.name}
           </h3>
-          <p className="mt-1.5 text-xs leading-relaxed text-fg-subtle">{meta.join(" · ")}</p>
+          <p className="mt-1 text-xs leading-relaxed text-fg-subtle">{meta.join(" · ")}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {row.status ? <RiskBadge status={row.status} /> : <Badge tone={legacy[row.risk].tone}>{legacy[row.risk].label}</Badge>}
@@ -35,13 +35,13 @@ export function SubjectRiskCard({ row, live }: { row: SubjectRow; live: boolean 
         </div>
       </header>
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-        <div><dt className="text-xs text-fg-subtle">Coverage</dt><dd className="mt-1 text-lg font-semibold tabular-nums text-fg">{row.coveragePct}%</dd></div>
-        <div><dt className="whitespace-nowrap text-xs text-fg-subtle">Planned today</dt><dd className="mt-1 text-lg font-semibold tabular-nums text-fg">{row.expectedPct}%</dd></div>
-        <div><dt className="text-xs text-fg-subtle">Behind plan</dt><dd className="mt-1 text-lg font-semibold tabular-nums text-fg">{hoursText(row.hoursBehind)}</dd></div>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+        <div><dt className="text-xs text-fg-subtle">Coverage</dt><dd className="mt-0.5 text-base font-semibold tabular-nums text-fg">{row.coveragePct}%</dd></div>
+        <div><dt className="whitespace-nowrap text-xs text-fg-subtle">Planned today</dt><dd className="mt-0.5 text-base font-semibold tabular-nums text-fg">{row.expectedPct}%</dd></div>
+        <div><dt className="text-xs text-fg-subtle">Behind plan</dt><dd className="mt-0.5 text-base font-semibold tabular-nums text-fg">{hoursText(row.hoursBehind)}</dd></div>
         <div>
           <dt className="text-xs text-fg-subtle">Buffer ratio</dt>
-          <dd className={cx("mt-1 text-lg font-semibold tabular-nums", row.bufferRatio == null ? "text-fg-faint" : severe ? "text-danger" : "text-warn")}>{row.bufferRatio == null ? "—" : row.bufferRatio.toFixed(2)}</dd>
+          <dd className={cx("mt-0.5 text-base font-semibold tabular-nums", row.bufferRatio == null ? "text-fg-faint" : severe ? "text-danger" : "text-warn")}>{row.bufferRatio == null ? "—" : row.bufferRatio.toFixed(2)}</dd>
         </div>
       </dl>
 

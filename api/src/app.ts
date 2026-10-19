@@ -10,6 +10,7 @@ import { progressionRouter } from "./routes/progression.js";
 import { sessionLogsRouter } from "./routes/sessionLogs.js";
 import { calendarRouter } from "./routes/calendar.js";
 import { dashboardRouter } from "./routes/dashboard.js";
+import { examReadinessRouter } from "./routes/examReadiness.js";
 import { examsRouter } from "./routes/exams.js";
 import { healthRouter } from "./routes/health.js";
 import { metaRouter } from "./routes/meta.js";
@@ -31,7 +32,7 @@ export function createApp(env: Pick<Env, "CORS_ORIGIN"> & Partial<Pick<Env, "APP
   app.use("/api", healthRouter(db));
   app.use("/api", dashboardRouter(deps));
   app.use("/api", metaRouter());
-  for (const router of [semestersRouter, calendarRouter, examsRouter, peopleRouter, subjectsRouter, timetableRouter, syllabusRouter, sessionLogsRouter, progressionRouter]) {
+  for (const router of [semestersRouter, calendarRouter, examsRouter, peopleRouter, subjectsRouter, timetableRouter, syllabusRouter, sessionLogsRouter, progressionRouter, examReadinessRouter]) {
     app.use("/api", router(deps));
   }
   app.use("/api", (_req, res) => { res.status(404).json({ error: "not_found", message: "No such endpoint" }); });

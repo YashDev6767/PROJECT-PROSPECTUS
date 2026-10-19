@@ -11,10 +11,13 @@ export interface SubjectRow {
   /** live rows only */ status?: RiskStatus; reason?: string; bufferRatio?: number | null; batchName?: string; track?: string; remainingHours?: number; availableHours?: number | null; deadline?: string;
 }
 export interface UpcomingExam { id: string; name: string; examDate: string; daysToExam: number | null; subtitle?: string; risk?: RiskLevel }
+export interface DashboardAssessment { kind: "ready" | "no_active_semester" | "no_subjects" | "needs_data"; message: string; subjects: number; assessed: number; unassessed: number }
 export interface Dashboard {
   /** "live" = computed from persisted timetable, logs and syllabus; "demo" = built-in sample numbers */
   dataSource: "demo" | "live";
   overall?: { status: RiskStatus | null; worstSubject: { id: string; name: string; batchName: string } | null; byTrack: Array<{ track: string; status: RiskStatus }> };
+  /** live payloads only: what the numbers can honestly say. Only "ready" makes an empty at-risk list mean "nothing is at risk". */
+  state?: DashboardAssessment;
   generatedAt: string;
   campuses: Campus[];
   context: { campus: Campus; semester: string; today: string };
@@ -112,3 +115,22 @@ export interface SubjectSummary {
   paceHours: number; projectedCompletion: string | null; deadline: string; deadlineLabel: string; overdueCount: number; unloggedPastSessions: number;
 }
 export interface LogSaveResponse { log: SessionLog; progress: { before: SubjectSummary | null; after: SubjectSummary | null } }
+
+/* ---------- Exam readiness (against each exam's start date; not a marks prediction) ---------- */
+export interface ExamReadinessSubject {
+  subjectId: string; code: string; name: string; batchName: string; facultyName: string | null; isSample: boolean;
+  status: RiskStatus; headline: string; reasons: string[];
+  scopeMode: "exam_scope" | "whole_syllabus"; topicsInScope: number; unscopedTopics: number;
+  hoursInScope: number; coveredHours: number; remainingHours: number; coveragePct: number | null;
+  availableHours: number | null; bufferRatio: number | null; projectedCompletion: string | null; unloggedPastSessions: number;
+}
+export interface ExamReadinessExam {
+  id: string; name: string; type: ExamType; typeLabel: string; startsOn: string; endsOn: string; daysToStart: number; phase: "upcoming" | "in_progress";
+  lastTeachingDate: string; notes: string | null; isSample: boolean;
+  semester: { id: string; name: string; track: Track }; batch: { id: string; name: string } | null;
+  status: RiskStatus | null; subjectCount: number; unassessed: number; note: string | null; subjects: ExamReadinessSubject[];
+}
+export interface ExamReadinessResponse {
+  asOf: string; campusId: string; thresholds: { onTrack: number; tight: number };
+  state: "ready" | "no_active_semester" | "no_exams"; message: string; exams: ExamReadinessExam[];
+}

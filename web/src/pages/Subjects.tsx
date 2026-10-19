@@ -52,7 +52,7 @@ function SubjectDialog({ subject, semesterId, campusId, onClose, onSaved }: { su
 function CapacityBadge({ s }: { s: Subject }) {
   if (s.weeklyScheduledHours === 0) return <Badge>Not scheduled</Badge>;
   if (s.plannedHours !== null && s.projectedSemesterHours < s.plannedHours) return <Badge tone="warn">Short by {hours(s.plannedHours - s.projectedSemesterHours)}</Badge>;
-  return <Badge tone="good">Covers plan</Badge>;
+  return <span className="text-xs text-fg-subtle">Covers plan</span>;
 }
 
 export function Subjects() {
@@ -89,7 +89,7 @@ export function Subjects() {
                 <thead><tr>{["Subject", "Batch", "Faculty", "Progress", "Plan / syllabus", "Per week", "Capacity", "Actions"].map((h) => <th key={h} scope="col" className={tableClasses.th}>{h}</th>)}</tr></thead>
                 <tbody>{subjects.map((s) => (
                   <tr key={s.id}>
-                    <td className={`${tableClasses.td} min-w-[15rem]`}><p className="flex items-center gap-2 font-semibold text-fg"><Link to={`/subjects/${s.id}`} className="text-accent-text underline-offset-2 hover:underline">{s.name}</Link> {s.isSample && <SampleBadge />}</p><p className="text-xs text-fg-subtle">{s.code}</p></td>
+                    <td className={`${tableClasses.td} min-w-[15rem]`}><p className="flex items-center gap-2 font-semibold text-fg"><Link to={`/subjects/${s.id}`} className="-my-2.5 inline-block py-2.5 text-accent-text underline-offset-2 hover:underline">{s.name}</Link> {s.isSample && <SampleBadge />}</p><p className="text-xs text-fg-subtle">{s.code}</p></td>
                     <td className={`${tableClasses.td} whitespace-nowrap`}>{s.batchName}</td>
                     <td className={`${tableClasses.td} whitespace-nowrap`}>{s.facultyName ?? <Badge tone="warn">Unassigned</Badge>}</td>
                     <td className={`${tableClasses.td} whitespace-nowrap`}>
@@ -104,10 +104,10 @@ export function Subjects() {
                     <td className={`${tableClasses.td} tabular-nums`}>{hours(s.weeklyScheduledHours)}</td>
                     <td className={tableClasses.td}><p className="tabular-nums">{hours(s.projectedSemesterHours)}</p><CapacityBadge s={s} /></td>
                     <td className={`${tableClasses.td} whitespace-nowrap`}><div className="flex items-center gap-1.5">
-                      <Link to={`/subjects/${s.id}/syllabus`} className="inline-flex min-h-9 items-center rounded-xl border border-line-strong bg-surface px-3 text-sm font-semibold hover:bg-surface-2" aria-label={`Syllabus for ${s.name}, ${s.batchName}`}>Syllabus</Link>
+                      <Link to={`/subjects/${s.id}/syllabus`} className="inline-flex min-h-11 items-center rounded-xl border border-line-strong lg:min-h-9 bg-surface px-3 text-sm font-semibold hover:bg-surface-2" aria-label={`Syllabus for ${s.name}, ${s.batchName}`}>Syllabus</Link>
                       {writable && <>
-                        <Button className="min-h-9 px-3" aria-label={`Edit ${s.name}, ${s.batchName}`} onClick={() => setEditing(s)}><Pencil className="size-4" aria-hidden /></Button>
-                        <Button className="min-h-9 px-3 text-danger" aria-label={`Delete ${s.name}, ${s.batchName}`} onClick={() => setDeleting(s)}><Trash2 className="size-4" aria-hidden /></Button>
+                        <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9" aria-label={`Edit ${s.name}, ${s.batchName}`} onClick={() => setEditing(s)}><Pencil className="size-4" aria-hidden /></Button>
+                        <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9 text-danger hover:text-danger" aria-label={`Delete ${s.name}, ${s.batchName}`} onClick={() => setDeleting(s)}><Trash2 className="size-4" aria-hidden /></Button>
                       </>}
                     </div></td>
                   </tr>))}

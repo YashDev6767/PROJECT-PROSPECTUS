@@ -3,7 +3,7 @@ import type { PrismaClient } from "@prisma/client";
 import { campuses } from "../data/campuses.js";
 import { timeInZone } from "../domain/clock.js";
 import { daysBetweenISO as daysBetween, type ISODate } from "../domain/dates.js";
-import type { Dashboard, SubjectRow } from "../domain/dashboard.js";
+import type { Dashboard, DashboardState, SubjectRow } from "../domain/dashboard.js";
 import { examTypeLabels } from "../domain/exams.js";
 import { riskRank } from "../domain/progress.js";
 import { taughtHours } from "../domain/sessionLogs.js";
@@ -53,9 +53,24 @@ export async function buildLiveDashboard(prisma: PrismaClient, campusId: string,
   const exams = await prisma.exam.findMany({ where: { semester: { campusId, id: { in: semesterIds } }, startsOn: { gte: dbDate(today) } }, include: { semester: true, batch: true }, orderBy: { startsOn: "asc" }, take: 6 });
   const recent = await prisma.sessionLog.findMany({ where: { subject: { batch: { semester: { campusId } } }, heldOn: { lte: dbDate(today) } }, include: logInclude, orderBy: [{ heldOn: "desc" }, { createdAt: "desc" }], take: 5 });
 
+  const unassessed = results.filter((r) => r.progress.risk === "UNKNOWN").length;
+  const state: DashboardState = await (async () => {
+    const base = { subjects: results.length, assessed: results.length - unassessed, unassessed };
+    if (active.length === 0) {
+      const all = await prisma.semester.findMany({ where: { campusId }, select: { startsOn: true, endsOn: true } });
+      const ended = all.filter((s) => iso(s.endsOn) < today).length, later = all.filter((s) => iso(s.startsOn) > today).length;
+      const inactive = all.length - ended - later;
+      const bits = [ended && `${ended} ended`, later && `${later} not started`, inactive && `${inactive} covering today but not activated`].filter(Boolean).join(", ");
+      return { kind: "no_active_semester" as const, message: `No semester is active for this campus today (${bits}). Activate the current semester under Semesters; until then nothing can be assessed.`, ...base };
+    }
+    if (results.length === 0) return { kind: "no_subjects" as const, message: "The active semester has no subjects yet, so there is nothing to assess. Add subjects, a timetable and a syllabus.", ...base };
+    if (base.assessed === 0) return { kind: "needs_data" as const, message: `${results.length} subject(s) exist but none can be assessed yet: each needs syllabus topics with planned hours and a deadline.`, ...base };
+    return { kind: "ready" as const, message: unassessed ? `${unassessed} of ${results.length} subject(s) cannot be assessed yet (no syllabus hours or no deadline).` : "", ...base };
+  })();
+
   const worst = roll.overall ? results.find((r) => r.progress.risk === roll.overall) : null;
   return {
-    dataSource: "live", generatedAt: now.toISOString(), campuses: campuses.map((c) => ({ id: c.id, name: c.name })),
+    dataSource: "live", state, generatedAt: now.toISOString(), campuses: campuses.map((c) => ({ id: c.id, name: c.name })),
     context: { campus: { id: campus.id, name: campus.name }, semester: active.length ? active.map((s) => `${s.name} (${trackNames[s.track]})`).join(" · ") : "No active semester", today },
     overall: { status: roll.overall, worstSubject: worst ? { id: worst.subject.id, name: worst.subject.name, batchName: worst.subject.batchName } : null, byTrack: roll.byTrack },
     metrics: {

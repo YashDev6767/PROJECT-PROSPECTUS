@@ -22,10 +22,25 @@ export interface UpcomingExam { id: string; name: string; examDate: string; days
 
 export interface DashboardSession { id: string; subject: string; code: string; start: string; end: string; room: string; state: "logged" | "needs_log" | "upcoming"; subjectId?: string; outcome?: string }
 
+/**
+ * What the live numbers can honestly say. `ready` is the only state in which an empty at-risk list means "nothing is at risk";
+ * every other state means the academic situation could not be assessed and the UI must not look reassuring.
+ */
+export type DashboardStateKind = "ready" | "no_active_semester" | "no_subjects" | "needs_data";
+export interface DashboardState {
+  kind: DashboardStateKind;
+  message: string;
+  subjects: number; // subjects in the active semesters
+  assessed: number; // subjects with a real status (not UNKNOWN)
+  unassessed: number; // UNKNOWN: no syllabus hours or no deadline
+}
+
 export interface Dashboard {
   /** "demo" = built-in sample numbers (no database rows); "live" = computed from persisted timetable, logs and syllabus. */
   dataSource: "demo" | "live";
   overall?: { status: RiskStatus | null; worstSubject: { id: string; name: string; batchName: string } | null; byTrack: Array<{ track: string; status: RiskStatus }> };
+  /** live payloads only */
+  state?: DashboardState;
   generatedAt: string;
   campuses: DemoCampus[];
   context: { campus: DemoCampus; semester: string; today: string };

@@ -40,21 +40,21 @@
   /* charts (validated against --surface) */
   --chart-1: #4f46e5; --chart-2: #0e7490; --chart-3: #b45309; --chart-4: #7c3aed; --chart-5: #596080;
   /* depth */
-  --sh-soft: 0 1px 2px rgb(30 27 75 / 0.05), 0 8px 24px -12px rgb(30 27 75 / 0.12);
-  --sh-glass: 0 1px 0 rgb(255 255 255 / 0.8) inset, 0 10px 32px -16px rgb(30 27 75 / 0.2);
-  --sh-pop: 0 16px 44px -14px rgb(30 27 75 / 0.32), 0 2px 6px rgb(30 27 75 / 0.08);
+  --sh-soft: 0 1px 2px rgb(30 27 75 / 0.04);
+  --sh-glass: 0 1px 2px rgb(30 27 75 / 0.04);
+  --sh-pop: 0 12px 32px -12px rgb(30 27 75 / 0.28), 0 1px 3px rgb(30 27 75 / 0.08);
   --glow: 0 0 0 0 transparent;
-  --glass-bg: rgb(255 255 255 / 0.62);
-  --glass-border: rgb(255 255 255 / 0.75);
+  --glass-bg: rgb(255 255 255 / 0.82);
+  --glass-border: var(--line);
   --scrim: rgb(14 17 36 / 0.42);
   --spot: rgb(99 102 241 / 0.12);
   /* atmosphere */
-  --bg-glow-1: rgb(99 102 241 / 0.42);
-  --bg-glow-2: rgb(168 85 247 / 0.3);
-  --bg-glow-3: rgb(56 189 248 / 0.34);
+  --bg-glow-1: rgb(99 102 241 / 0.32);
+  --bg-glow-2: rgb(168 85 247 / 0.22);
+  --bg-glow-3: rgb(56 189 248 / 0.26);
   --bg-sheen: rgb(255 255 255 / 0.55);
   --bg-dots: rgb(79 70 229 / 0.34);
-  --surface-alpha: 70%;
+  --surface-alpha: 80%;
 }
 
 .dark {
@@ -84,20 +84,20 @@
   --danger: #fa9a93; --danger-soft: #38201f; --danger-solid: #b42318; --danger-solid-hover: #cf3a2d;
   --info: #67d4ea; --info-soft: #11292f;
   --chart-1: #818cf8; --chart-2: #5fd0e6; --chart-3: #f0a452; --chart-4: #c4a7f5; --chart-5: #979cbd;
-  --sh-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 28px -14px rgb(0 0 0 / 0.6);
-  --sh-glass: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 12px 34px -16px rgb(0 0 0 / 0.7);
+  --sh-soft: 0 1px 2px rgb(0 0 0 / 0.35);
+  --sh-glass: 0 1px 2px rgb(0 0 0 / 0.35);
   --sh-pop: 0 18px 48px -14px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.06);
   --glow: 0 0 24px -6px rgb(99 102 241 / 0.55); /* used only on the primary action */
-  --glass-bg: rgb(19 22 38 / 0.6);
-  --glass-border: rgb(255 255 255 / 0.08);
+  --glass-bg: rgb(19 22 38 / 0.82);
+  --glass-border: var(--line);
   --scrim: rgb(2 3 10 / 0.66);
   --spot: rgb(129 140 248 / 0.16);
-  --bg-glow-1: rgb(99 102 241 / 0.5);
-  --bg-glow-2: rgb(147 51 234 / 0.38);
-  --bg-glow-3: rgb(37 99 235 / 0.34);
+  --bg-glow-1: rgb(99 102 241 / 0.4);
+  --bg-glow-2: rgb(147 51 234 / 0.3);
+  --bg-glow-3: rgb(37 99 235 / 0.26);
   --bg-sheen: rgb(255 255 255 / 0);
   --bg-dots: rgb(165 180 252 / 0.3);
-  --surface-alpha: 62%;
+  --surface-alpha: 74%;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -159,11 +159,13 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  --radius-card: 1.25rem;
+  --radius-card: 0.875rem;
   --shadow-soft: var(--sh-soft);
   --shadow-glass: var(--sh-glass);
   --shadow-pop: var(--sh-pop);
-  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-instant: 80ms; --dur-fast: 120ms; --dur-base: 180ms; --dur-slow: 260ms;
 
   /* documented by Aceternity UI for its Spotlight component */
   --animate-spotlight: spotlight 2s ease 0.75s 1 forwards;
@@ -179,7 +181,6 @@
 
 @layer base {
   :root { accent-color: var(--accent); }
-  html { scroll-behavior: smooth; }
   /* the base colour sits on <body>; the atmosphere is painted by <AppBackground> (a fixed layer behind the app, see components/layout) */
   body { @apply bg-app font-sans text-fg-2 antialiased; font-feature-settings: "cv11", "ss01"; text-rendering: optimizeLegibility; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -190,11 +191,15 @@
 }
 
 @layer components {
-  /* Frosted glass for app chrome (sidebar, header, dialogs). */
-  .glass { background: var(--glass-bg); border: 1px solid var(--glass-border); box-shadow: var(--sh-glass); backdrop-filter: blur(18px) saturate(1.25); -webkit-backdrop-filter: blur(18px) saturate(1.25); }
-  /* Content surface: translucent so the ambient background shows between and faintly through cards. */
-  .surface { @apply rounded-card border border-line shadow-soft; background: color-mix(in srgb, var(--surface) var(--surface-alpha), transparent); backdrop-filter: blur(12px) saturate(1.15); -webkit-backdrop-filter: blur(12px) saturate(1.15); }
+  /* App chrome (sidebar, header, dialogs): a near-opaque panel. No backdrop blur — blur over scrolling content is the most expensive paint in the app. */
+  .session-card { border-left-color: hsl(var(--sh) 62% 56%); background: color-mix(in srgb, hsl(var(--sh) 70% 56%) 11%, color-mix(in srgb, var(--surface) 92%, transparent)); }
+  .glass { background: var(--glass-bg); border: 1px solid var(--glass-border); box-shadow: var(--sh-glass); }
+  /* Content surface: lightly translucent so the ambient background still shows through, no blur. */
+  .surface { @apply rounded-card border border-line shadow-soft; background: color-mix(in srgb, var(--surface) var(--surface-alpha), transparent) }
   .primary-glow { box-shadow: var(--glow); }
+  /* long lists: let the browser skip layout/paint of rows that are off screen */
+  .cv-auto { content-visibility: auto; contain-intrinsic-size: auto 15rem; }   /* risk cards, ~240 px */
+  .cv-row { content-visibility: auto; contain-intrinsic-size: auto 4.75rem; }  /* list rows, ~76 px */
 
   /* ---- ambient background ---- */
   .app-bg { position: fixed; inset: 0; z-index: -10; overflow: hidden; pointer-events: none; background: var(--app); }
@@ -209,32 +214,31 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E"); }
 }
 
-/* ---------------------------------- motion ---------------------------------- */
-@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@keyframes pop { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+/* ---------------------------------- motion ----------------------------------
+   Tokens: --dur-instant/fast/base/slow and --ease-out (mirrored in src/lib/motion.ts). Only opacity and transform animate.
+   There is one page-level entrance; individual cards and rows do not animate on their own. */
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes pop { from { opacity: 0; transform: translateY(4px) scale(0.985); } to { opacity: 1; transform: none; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes sheet { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
-@keyframes pop-out { to { opacity: 0; transform: translateY(4px) scale(0.98); } }
+@keyframes sheet { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+@keyframes pop-out { to { opacity: 0; transform: translateY(2px) scale(0.99); } }
 @keyframes fade-out { to { opacity: 0; } }
-@keyframes slide-in-left { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
-@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-@keyframes month-in { from { opacity: 0; transform: translateX(calc(var(--dir, 1) * 14px)); } to { opacity: 1; transform: none; } }
+@keyframes slide-in-left { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+@keyframes pulse-soft { 50% { opacity: 0.55; } }
+@keyframes month-in { from { opacity: 0; transform: translateX(calc(var(--dir, 1) * 10px)); } to { opacity: 1; transform: none; } }
 
-.page-enter { animation: rise 300ms var(--ease-out-soft) both; }
-/* children of a page root appear one after another (80 ms apart, capped) — used by every page via the `stagger` class */
-.stagger > * { animation: rise 380ms var(--ease-out-soft) both; }
-.stagger > :nth-child(1) { animation-delay: 0ms; } .stagger > :nth-child(2) { animation-delay: 70ms; } .stagger > :nth-child(3) { animation-delay: 140ms; }
-.stagger > :nth-child(4) { animation-delay: 210ms; } .stagger > :nth-child(5) { animation-delay: 280ms; } .stagger > :nth-child(n+6) { animation-delay: 340ms; }
-.pop-in { animation: pop 170ms var(--ease-out-soft) both; transform-origin: top; }
-.dialog-in { animation: pop 200ms var(--ease-out-soft) both; }
-.dialog-out { animation: pop-out 140ms ease-in both; }
-.scrim-in { animation: fade 180ms ease-out both; }
-.scrim-out { animation: fade-out 140ms ease-in both; }
-.drawer-in { animation: slide-in-left 240ms var(--ease-out-soft) both; }
-.month-in { animation: month-in 220ms var(--ease-out-soft) both; }
-.shimmer { background: linear-gradient(100deg, var(--surface-3) 30%, color-mix(in srgb, var(--surface-3) 55%, var(--surface)) 50%, var(--surface-3) 70%); background-size: 200% 100%; animation: shimmer 1.6s linear infinite; }
-.lift { transition: transform 180ms var(--ease-out-soft), box-shadow 180ms var(--ease-out-soft), border-color 180ms; }
-.lift:hover { transform: translateY(-2px); box-shadow: var(--sh-pop); }
+.page-enter { animation: rise var(--dur-base) var(--ease-out) backwards; }
+.stagger > * { animation: none; } /* legacy hook: pages used to stagger every child; kept as a no-op so markup stays valid */
+.pop-in { animation: pop var(--dur-fast) var(--ease-out) both; transform-origin: top; }
+.dialog-in { animation: pop var(--dur-base) var(--ease-out) both; }
+.dialog-out { animation: pop-out var(--dur-fast) ease-in both; }
+.scrim-in { animation: fade var(--dur-base) ease-out both; }
+.scrim-out { animation: fade-out var(--dur-fast) ease-in both; }
+.drawer-in { animation: slide-in-left var(--dur-slow) var(--ease-out) both; }
+.month-in { animation: month-in var(--dur-base) var(--ease-out) both; }
+.shimmer { background: var(--surface-3); animation: pulse-soft 1.4s ease-in-out infinite; }
+.lift { transition: border-color var(--dur-base), box-shadow var(--dur-base); }
+.lift:hover { border-color: var(--line-strong); box-shadow: var(--sh-pop); }
 @media (max-width: 639px) { .dialog-in { animation-name: sheet; } }
 
 /* A short, global cross-fade while the theme changes (class is added by ThemeProvider for ~250 ms, never at startup). */
@@ -245,7 +249,6 @@ html.theme-transition, html.theme-transition *, html.theme-transition *::before,
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
   html.theme-transition, html.theme-transition * { transition: none !important; }
-  .lift:hover { transform: none; }
   .shimmer { animation: none; }
 }
 

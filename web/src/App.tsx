@@ -4,6 +4,7 @@ import { AppShell } from "./components/layout/AppShell";
 import { AcademicCalendar } from "./pages/Calendar";
 import { Exams } from "./pages/Exams";
 import { Overview } from "./pages/Overview";
+import { ExamReadiness } from "./pages/ExamReadiness";
 import { PhasePage } from "./pages/PhasePage";
 import { Semesters } from "./pages/Semesters";
 import { Settings } from "./pages/Settings";
@@ -31,7 +32,7 @@ export function App() {
         <Route path="timetable" element={guard("/timetable", <Timetable />)} />
         <Route path="settings" element={guard("/settings", <Settings />)} />
         <Route path="session-logs" element={guard("/session-logs", <SessionLogs />)} />
-        <Route path="exam-readiness" element={<PhasePage />} />
+        <Route path="exam-readiness" element={<ExamReadiness />} />
         <Route path="reports" element={<PhasePage />} />
         <Route path="*" element={<PhasePage />} />
       </Route>

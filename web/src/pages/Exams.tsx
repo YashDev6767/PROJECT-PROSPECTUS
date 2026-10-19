@@ -82,8 +82,8 @@ export function Exams() {
                     <td className={tableClasses.td}>{e.batchName ?? "Whole cohort"}</td>
                     <td className={`${tableClasses.td} max-w-56 truncate text-fg-muted`}>{e.notes ?? "—"}</td>
                     {writable && <td className={tableClasses.td}><div className="flex gap-1.5">
-                      <Button className="min-h-9 px-3" aria-label={`Edit ${e.name}`} onClick={() => setEditing(e)}><Pencil className="size-4" aria-hidden /> Edit</Button>
-                      <Button className="min-h-9 px-3 text-danger" aria-label={`Delete ${e.name}`} onClick={() => setDeleting(e)}><Trash2 className="size-4" aria-hidden /></Button>
+                      <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9" aria-label={`Edit ${e.name}`} onClick={() => setEditing(e)}><Pencil className="size-4" aria-hidden /> Edit</Button>
+                      <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9 text-danger hover:text-danger" aria-label={`Delete ${e.name}`} onClick={() => setDeleting(e)}><Trash2 className="size-4" aria-hidden /></Button>
                     </div></td>}
                   </tr>))}
                 </tbody>

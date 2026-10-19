@@ -17,14 +17,14 @@ const outcomeTone = { COMPLETED: "good", IN_PROGRESS: "warn", SKIPPED: "neutral"
 
 function ClassCard({ item, onOpen, canWrite }: { item: ScheduleItem; onOpen: () => void; canWrite: boolean }) {
   return (
-    <li className="surface lift flex flex-wrap items-center gap-4 p-4">
-      <div className="w-24 shrink-0 text-sm tabular-nums text-fg-muted"><p className="font-semibold text-fg">{item.startTime}–{item.endTime}</p><p className="text-xs">{hours(item.hours)}{item.kind === "makeup" ? " · make-up" : ""}</p></div>
+    <li className="cv-row flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 transition-colors hover:bg-surface-2/70">
+      <div className="w-24 shrink-0 text-sm tabular-nums text-fg-muted"><p className="font-medium text-fg">{item.startTime}–{item.endTime}</p><p className="text-xs">{hours(item.hours)}{item.kind === "makeup" ? " · make-up" : ""}</p></div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-fg">{item.subjectName}</p>
+        <p className="truncate text-sm font-medium text-fg">{item.subjectName}</p>
         <p className="truncate text-xs text-fg-subtle">{item.batchName} · {item.facultyName ?? "No faculty"}{item.room ? ` · ${item.room}` : ""}{item.date ? ` · ${shortDate(item.date)}` : ""}</p>
       </div>
       {item.log ? <Badge tone={outcomeTone[item.log.outcome]}>{outcomeLabels[item.log.outcome]}{item.log.revision > 1 ? ` · rev ${item.log.revision}` : ""}</Badge> : <Badge tone="warn">Not logged</Badge>}
-      {canWrite && <Button variant={item.log ? "secondary" : "primary"} className="min-h-11" onClick={onOpen} aria-label={`${item.log ? "Correct log for" : "Log session for"} ${item.subjectName}, ${item.batchName}, ${shortDate(item.date)} ${item.startTime}`}>
+      {canWrite && <Button className="min-h-10" onClick={onOpen} aria-label={`${item.log ? "Correct log for" : "Log session for"} ${item.subjectName}, ${item.batchName}, ${shortDate(item.date)} ${item.startTime}`}>
         {item.log ? <><Pencil className="size-4" aria-hidden /> Correct</> : <><PlayCircle className="size-4" aria-hidden /> Log session</>}</Button>}
     </li>
   );
@@ -122,7 +122,7 @@ export function SessionLogs() {
               {pending.data && pending.data.items.length > 0 && (
                 <section aria-label="Earlier classes without a log" className="space-y-2">
                   <h2 className="flex items-center gap-2 text-sm font-semibold text-fg"><CalendarClock className="size-4 text-warn" aria-hidden /> Earlier classes that still need a log <Badge tone="warn">{pending.data.items.length}</Badge></h2>
-                  <ul className="space-y-2">{pending.data.items.slice(0, 8).map((i) => <ClassCard key={i.key} item={i} canWrite={writable} onOpen={() => setEditing(i)} />)}</ul>
+                  <ul className="surface divide-y divide-line overflow-hidden">{pending.data.items.slice(0, 8).map((i) => <ClassCard key={i.key} item={i} canWrite={writable} onOpen={() => setEditing(i)} />)}</ul>
                   {pending.data.items.length > 8 && <p className="text-xs text-fg-subtle">Showing 8 of {pending.data.items.length}. Log these first — progress is understated until they are recorded.</p>}
                 </section>)}
 
@@ -133,7 +133,7 @@ export function SessionLogs() {
                 </div>
                 <Boundary res={schedule} lines={2}>{(d) => d.items.length === 0 ? (
                   <Card><EmptyState icon={ClipboardList} title="No classes planned for this day">{d.notices[0] ? `The calendar treats this day as ${reasonLabels[d.notices[0].reason] ?? d.notices[0].reason.replace(/_/g, " ")}.` : "Nothing is scheduled in the timetable for this day."}</EmptyState></Card>
-                ) : <ul className="space-y-2">{d.items.map((i) => <ClassCard key={i.key} item={i} canWrite={writable} onOpen={() => setEditing(i)} />)}</ul>}</Boundary>
+                ) : <ul className="surface divide-y divide-line overflow-hidden">{d.items.map((i) => <ClassCard key={i.key} item={i} canWrite={writable} onOpen={() => setEditing(i)} />)}</ul>}</Boundary>
               </section>
               {!writable && <p className="text-sm text-fg-subtle"><CheckCheck className="mr-1 inline size-4" aria-hidden />Your role can view the plan but not log sessions.</p>}
             </>)}

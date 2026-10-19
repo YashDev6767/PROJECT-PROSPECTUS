@@ -21,8 +21,10 @@ test("campus switch refetches the dashboard", async ({ page }) => {
 });
 
 test("unbuilt sections are honest about their status", async ({ page, isMobile }) => {
+  await page.evaluate(() => localStorage.setItem("prospectus.role", "admin")); // Reports is only offered to admins and campus managers
+  await page.reload();
   if (isMobile) await page.getByRole("button", { name: "Open menu" }).click();
-  await page.getByRole("navigation", { name: "Primary" }).locator("visible=true").getByRole("link", { name: "Exam Readiness" }).click();
+  await page.getByRole("navigation", { name: "Primary" }).locator("visible=true").getByRole("link", { name: "Reports" }).click();
   await expect(page.getByText("Not available yet")).toBeVisible();
 });
 

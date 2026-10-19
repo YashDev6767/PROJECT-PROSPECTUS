@@ -7,14 +7,16 @@ re-verifies checksums, headers, usage in the app, and a per-file budget on how m
 
 | Library | Official component | Official source | Local file | Used by | Changed lines vs official |
 |---|---|---|---|---|---|
-| Magic UI | Number Ticker | https://magicui.design/r/number-ticker.json (docs: /docs/components/number-ticker) | `magicui/number-ticker.tsx` | `ui/Metric.tsx` → `StatTile` on the Overview | 2 (default colour classes) |
 | Magic UI | Theme Toggler (`animated-theme-toggler`) | https://magicui.design/r/animated-theme-toggler.json | `magicui/animated-theme-toggler.tsx` | `ThemeMenu.tsx` → header | 0 (byte-identical); registry CSS added to `index.css` |
-| React Bits | SpotlightCard (TS + Tailwind) | https://reactbits.dev/r/SpotlightCard-TS-TW.json | `reactbits/SpotlightCard.tsx` | `ui/index.tsx` `StatTile` → Overview metric tiles | 2 (base classes) |
 | Aceternity UI | Stateful Button | https://ui.aceternity.com/registry/stateful-button.json | `aceternity/stateful-button.tsx` | `pages/Syllabus.tsx` "Save syllabus" | 38 (tokens, reduced motion, failure handling) |
 | Originkit | Arrow Reveal Button | https://www.originkit.dev/components/arrow-reveal-button (React/Next.js source on the component page) | `originkit/arrow-reveal-button.tsx` | `LogSessionCta.tsx` → Overview header | 19 (onClick, visible label, soft shadow, no icon travel, strict typing) |
-| Magic UI | Blur Fade | https://magicui.design/r/blur-fade.json | `magicui/blur-fade.tsx` | `ui/index.tsx` `PageHeader`; Overview stat tiles | 0 (byte-identical) |
 | Magic UI | Dot Pattern | https://magicui.design/r/dot-pattern.json | `magicui/dot-pattern.tsx` | `layout/AppBackground.tsx` (all pages) | 0 (byte-identical) |
 | Aceternity UI | Spotlight | https://ui.aceternity.com/registry/spotlight.json | `aceternity/spotlight.tsx` | `layout/AppBackground.tsx` (all pages) | 2 (unused React import removed) |
+
+## Removed in the product-design pass
+Magic UI Number Ticker, Magic UI Blur Fade and React Bits SpotlightCard were removed from the app (and from `_originals/` and the provenance
+registry): count-up numbers, a pointer-following glow on the metric tiles and per-element blur-fades were decorative and cost frames while
+scrolling. React Bits is therefore no longer used anywhere; nothing here claims otherwise.
 
 ## Honest notes
 - **Not used on purpose:** React Bits `FadeContent` (needs gsap + ScrollTrigger), Aceternity `Card Spotlight` (needs three.js / @react-three/fiber and a WebGL canvas), and the Originkit CLI (`npx originkit add …` needs an Originkit account — the source was taken from the public component page instead).

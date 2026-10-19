@@ -3,7 +3,7 @@ import { z } from "zod";
 import { toCsv } from "../domain/csv.js";
 import { weekdayNames } from "../domain/dates.js";
 import { slotHours } from "../domain/timetable.js";
-import { asyncHandler, failOnIssues, HttpError, needDb, notFound, parse, requireCapability, validationFailed } from "../http/errors.js";
+import { asyncHandler, failOnIssues, HttpError, inUse, needDb, notFound, parse, requireCapability, validationFailed } from "../http/errors.js";
 import { slotIssues, timetableCreate, timetableUpdate } from "../http/schemas.js";
 import { checkSlotConflicts, slotContextFor } from "../services/timetableData.js";
 import type { PrismaClient } from "@prisma/client";
@@ -94,7 +94,11 @@ export function timetableRouter({ db, today }: Deps): Router {
 
   r.delete("/timetable/:id", requireCapability("academic:write"), asyncHandler(async (req, res) => {
     const prisma = needDb(db);
-    if (!(await prisma.timetableEntry.findUnique({ where: { id: req.params.id } }))) throw notFound("Timetable entry");
+    const entry = await prisma.timetableEntry.findUnique({ where: { id: req.params.id }, include: { subject: { select: { name: true } }, _count: { select: { sessionLogs: true } } } });
+    if (!entry) throw notFound("Timetable entry");
+    // Logs point at the slot they were taught in. Deleting it would detach them (the schema would SetNull) and rewrite the
+    // historical plan and pace, so a slot that has history can only be removed once that history is gone.
+    if (entry._count.sessionLogs > 0) throw inUse(`Cannot delete this ${entry.subject.name} class: ${entry._count.sessionLogs} session log(s) were recorded against it. Historical logs are kept, so the slot stays.`, { sessionLogs: entry._count.sessionLogs });
     await prisma.timetableEntry.delete({ where: { id: req.params.id } });
     res.status(204).end();
   }));

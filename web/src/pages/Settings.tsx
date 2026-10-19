@@ -60,8 +60,8 @@ function BatchesTab({ campusId, writable }: { campusId: string; writable: boolea
                 <td className={tableClasses.td}>{b.semesterName}</td><td className={tableClasses.td}>{trackLabels[b.track]}</td>
                 <td className={`${tableClasses.td} tabular-nums`}>{b.studentCount ?? "—"}</td><td className={`${tableClasses.td} tabular-nums`}>{b.subjectCount}</td>
                 {writable && <td className={tableClasses.td}><div className="flex gap-1.5">
-                  <Button className="min-h-9 px-3" aria-label={`Edit ${b.name} (${b.semesterName}, ${trackLabels[b.track]})`} onClick={() => setEditing(b)}><Pencil className="size-4" aria-hidden /></Button>
-                  <Button className="min-h-9 px-3 text-danger" aria-label={`Delete ${b.name} (${b.semesterName}, ${trackLabels[b.track]})`} onClick={() => setDeleting(b)}><Trash2 className="size-4" aria-hidden /></Button>
+                  <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9" aria-label={`Edit ${b.name} (${b.semesterName}, ${trackLabels[b.track]})`} onClick={() => setEditing(b)}><Pencil className="size-4" aria-hidden /></Button>
+                  <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9 text-danger hover:text-danger" aria-label={`Delete ${b.name} (${b.semesterName}, ${trackLabels[b.track]})`} onClick={() => setDeleting(b)}><Trash2 className="size-4" aria-hidden /></Button>
                 </div></td>}
               </tr>))}
             </tbody>
@@ -114,8 +114,8 @@ function FacultyTab({ campusId, writable }: { campusId: string; writable: boolea
                 <td className={tableClasses.td}><span className="flex items-center gap-2 font-semibold text-fg">{f.name} {f.isSample && <SampleBadge />}</span></td>
                 <td className={tableClasses.td}>{f.email ?? "—"}</td><td className={`${tableClasses.td} tabular-nums`}>{f.subjectCount}</td><td className={`${tableClasses.td} tabular-nums`}>{hours(f.weeklyHours)}</td>
                 {writable && <td className={tableClasses.td}><div className="flex gap-1.5">
-                  <Button className="min-h-9 px-3" aria-label={`Edit ${f.name}`} onClick={() => setEditing(f)}><Pencil className="size-4" aria-hidden /></Button>
-                  <Button className="min-h-9 px-3 text-danger" aria-label={`Delete ${f.name}`} onClick={() => setDeleting(f)}><Trash2 className="size-4" aria-hidden /></Button>
+                  <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9" aria-label={`Edit ${f.name}`} onClick={() => setEditing(f)}><Pencil className="size-4" aria-hidden /></Button>
+                  <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9 text-danger hover:text-danger" aria-label={`Delete ${f.name}`} onClick={() => setDeleting(f)}><Trash2 className="size-4" aria-hidden /></Button>
                 </div></td>}
               </tr>))}
             </tbody>

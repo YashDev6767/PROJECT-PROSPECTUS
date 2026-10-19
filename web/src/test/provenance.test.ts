@@ -13,11 +13,8 @@ const manifest = JSON.parse(readFileSync(join(vendor, "_originals/MANIFEST.json"
 
 // official file -> vendored file, the import specifier the app uses, and the maximum number of changed lines (both sides of a diff)
 const vendored: Record<string, { path: string; importedAs: string; maxChangedLines: number }> = {
-  "magicui-number-ticker.tsx.orig.txt": { path: "magicui/number-ticker.tsx", importedAs: "vendor/magicui/number-ticker", maxChangedLines: 2 },
   "magicui-animated-theme-toggler.tsx.orig.txt": { path: "magicui/animated-theme-toggler.tsx", importedAs: "vendor/magicui/animated-theme-toggler", maxChangedLines: 0 },
-  "reactbits-SpotlightCard.tsx.orig.txt": { path: "reactbits/SpotlightCard.tsx", importedAs: "vendor/reactbits/SpotlightCard", maxChangedLines: 2 },
   "aceternity-stateful-button.tsx.orig.txt": { path: "aceternity/stateful-button.tsx", importedAs: "vendor/aceternity/stateful-button", maxChangedLines: 40 },
-  "magicui-blur-fade.tsx.orig.txt": { path: "magicui/blur-fade.tsx", importedAs: "vendor/magicui/blur-fade", maxChangedLines: 0 },
   "magicui-dot-pattern.tsx.orig.txt": { path: "magicui/dot-pattern.tsx", importedAs: "vendor/magicui/dot-pattern", maxChangedLines: 0 },
   "aceternity-spotlight.tsx.orig.txt": { path: "aceternity/spotlight.tsx", importedAs: "vendor/aceternity/spotlight", maxChangedLines: 2 },
   "originkit-arrow-reveal-button.tsx.orig.txt": { path: "originkit/arrow-reveal-button.tsx", importedAs: "vendor/originkit/arrow-reveal-button", maxChangedLines: 20 },
@@ -30,7 +27,7 @@ const sources = (dir: string): string[] => readdirSync(dir).flatMap((f) => {
 const appCode = sources(resolve(process.cwd(), "src")).map((p) => readFileSync(p, "utf8")).join("\n");
 
 describe("vendored third-party components", () => {
-  it("covers all four libraries", () => expect(new Set(manifest.map((m) => m.library))).toEqual(new Set(["Magic UI", "React Bits", "Aceternity UI", "Originkit"])));
+  it("covers the libraries still in use", () => expect(new Set(manifest.map((m) => m.library))).toEqual(new Set(["Magic UI", "Aceternity UI", "Originkit"])));
 
   it.each(manifest)("$library · $component: pristine original matches its recorded checksum", (m) => {
     const content = readFileSync(join(vendor, "_originals", m.file));
@@ -62,7 +59,7 @@ describe("vendored third-party components", () => {
     expect(appCode).toContain(vendored[m.file]!.importedAs);
   });
 
-  it.each([["magicui/animated-theme-toggler.tsx", "magicui-animated-theme-toggler"], ["magicui/blur-fade.tsx", "magicui-blur-fade"], ["magicui/dot-pattern.tsx", "magicui-dot-pattern"]])("%s is byte-identical to the official source", (file, original) => {
+  it.each([["magicui/animated-theme-toggler.tsx", "magicui-animated-theme-toggler"], ["magicui/dot-pattern.tsx", "magicui-dot-pattern"]])("%s is byte-identical to the official source", (file, original) => {
     const body = readFileSync(join(vendor, file), "utf8");
     expect(body.slice(body.indexOf("*/") + 3)).toBe(readFileSync(join(vendor, `_originals/${original}.tsx.orig.txt`), "utf8"));
   });

@@ -65,14 +65,21 @@ export interface SubjectResult {
   weeklyHours: number;
 }
 
-export function computeSubjectResult(ctx: SubjectContext, asOf: ISODate, settings: Settings): SubjectResult {
+export interface ResultOptions {
+  /** Measure against this deadline instead of the configured one (used for per-exam readiness). */
+  deadline?: Deadline;
+  /** Only these topics are in scope (used when topics are tagged with the exam that assesses them). */
+  topicFilter?: (t: { id: string; examScope: "SESSIONAL" | "MID_TERM" | "PUT" | "END_TERM" | null }) => boolean;
+}
+
+export function computeSubjectResult(ctx: SubjectContext, asOf: ISODate, settings: Settings, opts: ResultOptions = {}): SubjectResult {
   const { subject } = ctx;
   const sem = subject.batch.semester;
   const engine = runSubjectEngine({
     semester: { startsOn: iso(sem.startsOn), endsOn: iso(sem.endsOn), saturdayRule: sem.saturdayRule },
     batchId: subject.batchId,
     slots: subject.timetable.map((t) => ({ id: t.id, weekday: t.weekday, startTime: t.startTime, endTime: t.endTime })),
-    topics: subject.units.flatMap((u) => u.topics.map((t) => ({ id: t.id, title: t.title, unitTitle: u.title, plannedHours: t.plannedHours }))),
+    topics: subject.units.flatMap((u) => u.topics.filter((t) => !opts.topicFilter || opts.topicFilter(t)).map((t) => ({ id: t.id, title: t.title, unitTitle: u.title, plannedHours: t.plannedHours }))),
     logs: subject.sessions.map((l) => ({
       id: l.id, timetableEntryId: l.timetableEntryId, makeupOfId: l.makeupOfId, heldOn: iso(l.heldOn), outcome: l.outcome, rescheduledTo: l.rescheduledTo ? iso(l.rescheduledTo) : null,
       slotStart: l.slotStart, slotEnd: l.slotEnd, scheduledHours: l.scheduledHours, actualHours: l.actualHours, createdAtMs: l.createdAt.getTime(),
@@ -80,6 +87,7 @@ export function computeSubjectResult(ctx: SubjectContext, asOf: ISODate, setting
     })),
     exams: ctx.exams.map((e) => ({ batchId: e.batchId, type: e.type, startsOn: e.startsOn, endsOn: e.endsOn })),
     calendar: ctx.calendar, asOf, thresholds: settings.thresholds, deadlineExamType: settings.deadlineExamType,
+    ...(opts.deadline ? { deadlineOverride: opts.deadline } : {}),
   });
   return {
     subject: {

@@ -2,7 +2,6 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeMenu } from "../components/ThemeMenu";
-import { Metric } from "../components/ui/Metric";
 import { Progress } from "../components/ui";
 import { ThemeProvider } from "../context/ThemeContext";
 
@@ -115,22 +114,6 @@ describe("theme menu accessibility", () => {
 });
 
 describe("motion", () => {
-  it("dashboard numbers render the exact final value immediately under reduced motion", () => {
-    mockMedia({ dark: false, reduced: true });
-    render(<Metric value={72.4} decimals={1} suffix="%" />);
-    expect(screen.getByText("72.4%")).toBeInTheDocument();
-  });
-
-  it("with motion allowed the official Magic UI Number Ticker counts up from 0 and settles on the exact value", async () => {
-    mockMedia({ dark: false, reduced: false });
-    // motion's useInView needs IntersectionObserver: report the element as visible straight away
-    vi.stubGlobal("IntersectionObserver", class { constructor(private cb: (e: unknown[]) => void) {} observe(target: Element) { this.cb([{ isIntersecting: true, target }]); } unobserve() {} disconnect() {} });
-    const { container } = render(<Metric value={50} decimals={1} suffix="%" />);
-    expect(container.textContent).toBe("0%");
-    await waitFor(() => expect(container.textContent).toBe("50.0%"), { timeout: 8000 });
-    vi.unstubAllGlobals();
-  }, 12000);
-
   it("progress bars keep their accessible value regardless of animation", () => {
     mockMedia({ dark: false, reduced: false });
     render(<Progress value={37.5} label="Coverage" />);

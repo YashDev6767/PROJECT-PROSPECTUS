@@ -89,7 +89,7 @@ describe("sidebar", () => {
   it("groups the destinations, keeps every link, and shows Settings and the demo role at the bottom", async () => {
     renderApp();
     const nav = (await screen.findAllByRole("navigation", { name: "Primary" }))[0]!;
-    for (const g of ["Workspace", "Academics", "Teaching", "Insights"]) expect(within(nav).getByRole("group", { name: g })).toBeInTheDocument();
+    for (const g of ["Workspace", "Academics", "Teaching", "Reports and settings"]) expect(within(nav).getByRole("group", { name: g })).toBeInTheDocument();
     for (const l of ["Overview", "Academic Calendar", "Semesters", "Exam Schedule", "Subjects", "Timetable", "Session Logs", "Exam Readiness", "Reports", "Settings"]) expect(within(nav).getByRole("link", { name: l })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
     expect(screen.getAllByLabelText("Preview as role")).toHaveLength(1);
@@ -101,7 +101,13 @@ describe("sidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
     expect(screen.getByRole("button", { name: "Expand sidebar" })).toHaveAttribute("aria-expanded", "false");
     expect(localStorage.getItem("prospectus.sidebar")).toBe("collapsed");
-    expect(within(nav).getByRole("link", { name: "Subjects" })).toHaveAttribute("title", "Subjects");
+    const subjects = within(nav).getByRole("link", { name: "Subjects" }); // icon-only now: the accessible name comes from aria-label
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    await userEvent.hover(subjects); // visual tooltip (aria-hidden duplicate of the name) appears on hover …
+    expect(document.body.textContent).toContain("Subjects");
+    await userEvent.unhover(subjects);
+    subjects.focus(); // … and on keyboard focus, and Escape dismisses it
+    await userEvent.keyboard("{Escape}");
     view.unmount();
     renderApp();
     expect(await screen.findByRole("button", { name: "Expand sidebar" })).toBeInTheDocument();
@@ -112,7 +118,26 @@ describe("sidebar", () => {
     renderApp();
     const nav = (await screen.findAllByRole("navigation", { name: "Primary" }))[0]!;
     expect(within(nav).queryByRole("link", { name: "Reports" })).not.toBeInTheDocument();
-    expect(within(nav).queryByRole("group", { name: "Insights" })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("group", { name: "Reports and settings" })).not.toBeInTheDocument(); // students see neither Reports nor Settings
+  });
+});
+
+describe("motion and performance rules (index.css)", () => {
+  const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
+  const rule = (sel: string) => new RegExp(`${sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{[^}]*\\}`).exec(css)?.[0] ?? "";
+  it("defines duration and easing tokens and uses them for the page entrance", () => {
+    expect(css).toMatch(/--dur-fast:\s*120ms/); expect(css).toMatch(/--dur-base:\s*180ms/); expect(css).toMatch(/--ease-out:/);
+    expect(rule(".page-enter")).toContain("var(--dur-base)");
+  });
+  it("has no per-card entrance animation, no global smooth scrolling and no blur on cards or chrome", () => {
+    expect(rule(".stagger > *")).toContain("animation: none");
+    expect(css).not.toMatch(/html\s*\{[^}]*scroll-behavior:\s*smooth/);
+    expect(rule(".surface")).not.toContain("backdrop-filter");
+    expect(rule(".glass")).not.toContain("backdrop-filter");
+  });
+  it("collapses every animation under prefers-reduced-motion", () => {
+    const block = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(block).toContain("animation-duration: 0.01ms"); expect(block).toContain("transition-duration: 0.01ms"); expect(block).toContain("scroll-behavior: auto");
   });
 });
 

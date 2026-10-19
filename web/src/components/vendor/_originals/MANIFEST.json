@@ -1,16 +1,5 @@
 [
   {
-    "file": "magicui-number-ticker.tsx.orig.txt",
-    "sha256": "0f7dcbc6a1962615a877590304e846f33d390002a51f2226f544938577c220f4",
-    "bytes": 1799,
-    "retrievedAt": "2026-10-16",
-    "library": "Magic UI",
-    "component": "Number Ticker",
-    "docs": "https://magicui.design/docs/components/number-ticker",
-    "source": "https://magicui.design/r/number-ticker.json",
-    "license": "MIT"
-  },
-  {
     "file": "magicui-animated-theme-toggler.tsx.orig.txt",
     "sha256": "5d09afdb5968e9f7f3967943c27103d727f264fdd51fa14b10a4b3130a1970a8",
     "bytes": 10208,
@@ -20,17 +9,6 @@
     "docs": "https://magicui.design/docs/components/animated-theme-toggler",
     "source": "https://magicui.design/r/animated-theme-toggler.json",
     "license": "MIT"
-  },
-  {
-    "file": "reactbits-SpotlightCard.tsx.orig.txt",
-    "sha256": "f7b64189ce3c018e5f54103bdf16b3e5f0c97f4a0dba9f6cd62d8793580b8c72",
-    "bytes": 12423,
-    "retrievedAt": "2026-10-16",
-    "library": "React Bits",
-    "component": "SpotlightCard (TS + Tailwind variant)",
-    "docs": "https://reactbits.dev/components/spotlight-card",
-    "source": "https://reactbits.dev/r/SpotlightCard-TS-TW.json",
-    "license": "MIT + Commons Clause (see https://github.com/DavidHDev/react-bits)"
   },
   {
     "file": "aceternity-stateful-button.tsx.orig.txt",
@@ -53,17 +31,6 @@
     "docs": "https://www.originkit.dev/components/arrow-reveal-button",
     "source": "https://www.originkit.dev/components/arrow-reveal-button (React/Next.js source delivered by the component page; the 'npx originkit add arrow-reveal-button' CLI route needs an Originkit account and was NOT used)",
     "license": "Originkit licence: free to build and run your own projects; no redistribution as a template/starter kit \u2014 https://www.originkit.dev/docs/licensing"
-  },
-  {
-    "file": "magicui-blur-fade.tsx.orig.txt",
-    "sha256": "99a8e83aa8817f48e26d921e959ff9abefb5c2f1f0b72b166ed95e88e015949f",
-    "bytes": 2220,
-    "retrievedAt": "2026-10-16",
-    "library": "Magic UI",
-    "component": "Blur Fade",
-    "docs": "https://magicui.design/docs/components/blur-fade",
-    "source": "https://magicui.design/r/blur-fade.json",
-    "license": "MIT"
   },
   {
     "file": "magicui-dot-pattern.tsx.orig.txt",

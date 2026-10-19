@@ -60,7 +60,8 @@ describe("role-aware navigation", () => {
 describe("unbuilt sections", () => {
   it("say plainly that they are not available yet", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(dashboard))));
-    renderApp("/exam-readiness");
+    localStorage.setItem("prospectus.role", "admin"); // Reports is hidden from other roles
+    renderApp("/reports");
     expect(await screen.findByText("Not available yet")).toBeInTheDocument();
     expect(screen.getByText("Planned for Phase 4")).toBeInTheDocument();
   });

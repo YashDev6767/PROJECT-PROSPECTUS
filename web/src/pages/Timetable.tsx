@@ -1,6 +1,6 @@
-import { Clock, Download, Plus } from "lucide-react";
-import { useState, type FormEvent } from "react";
-import { Button, Card, EmptyState, PageHeader, SampleBadge, Tabs, cx } from "../components/ui";
+import { ChevronLeft, ChevronRight, Clock, Download, Plus } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Button, Card, EmptyState, PageHeader, SampleBadge, Tabs } from "../components/ui";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { Dialog } from "../components/ui/Dialog";
 import { Field, Input, Select, SubmitFeedback, useSubmit } from "../components/ui/forms";
@@ -9,9 +9,11 @@ import { useToast } from "../components/ui/Toast";
 import { NoSemesters, SemesterSelect, useSemesterChoice } from "../components/SemesterSelect";
 import { useApp } from "../context/AppContext";
 import { api, downloadCsv } from "../lib/api";
-import { hours, shortDate } from "../lib/format";
+import { hours, localToday } from "../lib/format";
 import { campusName, weekdayNames } from "../lib/labels";
-import type { Batch, Faculty, Subject, TimetableEntry } from "../lib/types";
+import { TimetableGrid, type DayInfo } from "../components/TimetableGrid";
+import { addDays, isoWeekday, monthsOf, rangeLabel, weekDates, weekStart } from "../lib/timetableLayout";
+import type { Batch, Faculty, MonthData, Subject, TimetableEntry } from "../lib/types";
 
 function SlotDialog({ entry, semesterId, defaultWeekday, onClose, onSaved, onDelete }: { entry: TimetableEntry | null; semesterId: string; defaultWeekday: number; onClose: () => void; onSaved: () => void; onDelete?: () => void }) {
   const subjects = useResource<{ subjects: Subject[] }>(`/api/subjects?semesterId=${semesterId}`);
@@ -48,13 +50,19 @@ function SlotDialog({ entry, semesterId, defaultWeekday, onClose, onSaved, onDel
   );
 }
 
+const DAYS_SHOWN = 6; // Mon–Sat; Sunday is added only when something is scheduled on it
+const longFmt = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+
 export function Timetable() {
   const { campusId, can } = useApp();
   const toast = useToast();
   const choice = useSemesterChoice(campusId);
   const sem = choice.semester;
+  const today = localToday();
   const [mode, setMode] = useState<"batch" | "faculty">("batch");
   const [entityId, setEntityId] = useState("");
+  const [view, setView] = useState<"week" | "day">(() => (typeof window !== "undefined" && window.innerWidth < 768 ? "day" : "week"));
+  const [anchor, setAnchor] = useState(today);
   const batches = useResource<{ batches: Batch[] }>(sem ? `/api/batches?semesterId=${sem.id}` : null);
   const faculty = useResource<{ faculty: Faculty[] }>(campusId ? `/api/faculty?campusId=${campusId}` : null);
   const filter = entityId ? `&${mode === "batch" ? "batchId" : "facultyId"}=${entityId}` : "";
@@ -64,46 +72,72 @@ export function Timetable() {
   const writable = can("academic:write");
   const options = mode === "batch" ? batches.data?.batches.map((b) => ({ id: b.id, name: b.name })) : faculty.data?.faculty.map((f) => ({ id: f.id, name: f.name }));
 
+  // Start on today when it is inside the semester, otherwise on the semester's first day.
+  const semId = sem?.id;
+  useEffect(() => { if (sem) setAnchor(today >= sem.startsOn && today <= sem.endsOn ? today : sem.startsOn); }, [semId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const sundayUsed = res.data?.entries.some((e) => e.weekday === 7) ?? false;
+  const week = useMemo(() => weekDates(anchor, sundayUsed ? 7 : DAYS_SHOWN), [anchor, sundayUsed]);
+  const dates = view === "week" ? week : [anchor];
+  const monthList = monthsOf(week);
+  const m1 = useResource<MonthData>(sem ? `/api/calendar/month?campusId=${sem.campusId}&track=${sem.track}&month=${monthList[0]}` : null);
+  const m2 = useResource<MonthData>(sem && monthList[1] ? `/api/calendar/month?campusId=${sem.campusId}&track=${sem.track}&month=${monthList[1]}` : null);
+  const info = useMemo(() => {
+    const out: Record<string, DayInfo> = {};
+    const titles = new Map([...(m1.data?.entries ?? []), ...(m2.data?.entries ?? [])].map((e) => [e.id, e.title]));
+    for (const m of [m1.data, m2.data]) for (const day of m?.days ?? []) {
+      const note = day.reason === "holiday" ? (day.entryIds.map((id) => titles.get(id)).find(Boolean) ?? "Holiday") : day.reason === "saturday_off" ? "Off Saturday" : day.reason === "sunday" ? "Sunday" : day.reason === "special_working_day" ? "Special working day" : undefined;
+      out[day.date] = { day, ...(note ? { note } : {}) };
+    }
+    if (sem) for (const d of dates) out[d] = { ...out[d], outsideSemester: d < sem.startsOn || d > sem.endsOn };
+    return out;
+  }, [m1.data, m2.data, sem, dates.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const step = view === "week" ? 7 : 1;
+  const label = view === "week" ? rangeLabel(week[0]!, week[week.length - 1]!) : longFmt.format(new Date(`${anchor}T00:00:00Z`));
+  const isCurrent = view === "week" ? weekStart(today) === weekStart(anchor) : today === anchor;
+  const weekOutside = !!sem && (week[week.length - 1]! < sem.startsOn || week[0]! > sem.endsOn);
+  const openEntry = writable ? (e: TimetableEntry) => setEditing({ entry: e, weekday: e.weekday }) : null;
+
   return (
-    <div className="stagger space-y-8">
-      <PageHeader title="Timetable" subtitle={`${campusName(campusId)} · weekly classes by batch or faculty`}
+    <div className="stagger space-y-6">
+      <PageHeader title="Timetable" subtitle={`${campusName(campusId)} · the weekly teaching pattern, shown against the academic calendar`}
         actions={<>
           {sem && <Button onClick={() => void downloadCsv(`/api/timetable/export.csv?semesterId=${sem.id}${filter}`, "timetable.csv")}><Download className="size-4" aria-hidden /> Export CSV</Button>}
-          {writable && sem && <Button variant="primary" onClick={() => setEditing({ entry: null, weekday: 1 })}><Plus className="size-4" aria-hidden /> Add class</Button>}
+          {writable && sem && <Button variant="primary" onClick={() => setEditing({ entry: null, weekday: view === "day" ? Math.min(isoWeekday(anchor), 6) : 1 })}><Plus className="size-4" aria-hidden /> Add class</Button>}
         </>} />
       <Boundary res={choice.res} lines={2}>{() => choice.semesters.length === 0 ? <Card><NoSemesters /></Card> : (
         <>
-          <div className="flex flex-wrap items-end gap-3">
-            <SemesterSelect choice={choice} />
-            <Tabs label="Group timetable by" value={mode} onChange={(m) => { setMode(m); setEntityId(""); }} tabs={[{ id: "batch", label: "By batch" }, { id: "faculty", label: "By faculty" }]} />
-            <div className="min-w-48"><Field label={mode === "batch" ? "Batch" : "Faculty member"}><Select value={entityId} onChange={(e) => setEntityId(e.target.value)}><option value="">{mode === "batch" ? "All batches" : "All faculty"}</option>{options?.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</Select></Field></div>
+          <div className="surface space-y-3 p-4" role="toolbar" aria-label="Timetable controls">
+            <div className="flex flex-wrap items-end gap-3">
+              <SemesterSelect choice={choice} />
+              <Tabs label="Group timetable by" value={mode} onChange={(m) => { setMode(m); setEntityId(""); }} tabs={[{ id: "batch", label: "By batch" }, { id: "faculty", label: "By faculty" }]} />
+              <div className="min-w-48 flex-1 sm:max-w-64"><Field label={mode === "batch" ? "Batch" : "Faculty member"}><Select value={entityId} onChange={(e) => setEntityId(e.target.value)}><option value="">{mode === "batch" ? "All batches" : "All faculty"}</option>{options?.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</Select></Field></div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex gap-1" role="group" aria-label="Change week">
+                  <Button className="min-h-10 min-w-11 px-2.5" aria-label={view === "week" ? "Previous week" : "Previous day"} onClick={() => setAnchor(addDays(anchor, -step))}><ChevronLeft className="size-4" aria-hidden /></Button>
+                  <Button className="min-h-10" aria-label="Go to today" disabled={isCurrent} onClick={() => setAnchor(today)}>Today</Button>
+                  <Button className="min-h-10 min-w-11 px-2.5" aria-label={view === "week" ? "Next week" : "Next day"} onClick={() => setAnchor(addDays(anchor, step))}><ChevronRight className="size-4" aria-hidden /></Button>
+                </div>
+                <p aria-live="polite" data-testid="range-label" className="text-base font-semibold tabular-nums text-fg">{label}</p>
+              </div>
+              <Tabs label="Timetable view" value={view} onChange={setView} tabs={[{ id: "week", label: "Week" }, { id: "day", label: "Day" }]} />
+            </div>
+            {view === "day" && (
+              <div role="group" aria-label="Day of the week" className="flex gap-1 overflow-x-auto pb-0.5">
+                {week.map((d) => <button key={d} type="button" aria-pressed={d === anchor} onClick={() => setAnchor(d)} className={`min-h-10 min-w-14 shrink-0 rounded-lg border px-2 text-sm font-medium ${d === anchor ? "border-accent bg-accent-soft text-accent-soft-fg" : "border-line text-fg-muted hover:bg-surface-2"}`}>{weekdayNames[isoWeekday(d)]!.slice(0, 3)} <span className="tabular-nums">{Number(d.slice(8))}</span></button>)}
+              </div>)}
           </div>
           <Boundary res={res} lines={4}>{({ entries, totalWeeklyHours }) => entries.length === 0 ? (
             <Card><EmptyState icon={Clock} title="No classes scheduled">{writable ? 'Use "Add class" to place a subject on a weekday. Clashes for the same batch or faculty are blocked with an explanation.' : "The timetable will appear here once classes are scheduled."}</EmptyState></Card>
           ) : (
             <>
               <p className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">{entries.length} classes · <strong className="font-semibold text-fg">{hours(totalWeeklyHours)}</strong> per week (derived from the times below){entries.some((e) => e.isSample) && <><SampleBadge /> includes sample data</>}</p>
-              <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-                {[1, 2, 3, 4, 5, 6].map((d) => {
-                  const day = entries.filter((e) => e.weekday === d);
-                  return (
-                    <section key={d} aria-label={weekdayNames[d]} className="surface min-h-24 space-y-2 p-3">
-                      <h2 className="text-xs font-semibold uppercase tracking-wide text-fg-subtle">{weekdayNames[d]}</h2>
-                      {day.length === 0 && <p className="text-xs text-fg-subtle">No classes</p>}
-                      {day.map((e) => {
-                        const inner = (<>
-                          <span className="block text-xs font-semibold tabular-nums text-accent-text">{e.startTime}–{e.endTime}</span>
-                          <span className="block text-sm font-semibold leading-snug text-fg">{e.subjectName}</span>
-                          {e.nextDate !== undefined && <span className="block text-xs text-fg-muted">{e.nextDate ? `Next ${shortDate(e.nextDate)}` : "No more dates"} · {e.loggedCount} logged{e.pastUnlogged ? <span className="font-semibold text-warn"> · {e.pastUnlogged} not logged</span> : null}</span>}
-                          <span className="block text-xs text-fg-subtle">{mode === "batch" ? `${entityId ? "" : `${e.batchName} · `}${e.facultyName ?? "No faculty"}` : e.batchName}{e.room ? ` · ${e.room}` : ""}</span>
-                        </>);
-                        return writable
-                          ? <button key={e.id} type="button" onClick={() => setEditing({ entry: e, weekday: d })} aria-label={`Edit ${e.subjectName}, ${e.batchName}, ${e.weekdayName} ${e.startTime}`} className={cx("block w-full space-y-0.5 rounded-xl border border-line bg-surface-2 p-2.5 text-left hover:border-accent/60")}>{inner}</button>
-                          : <div key={e.id} className="space-y-0.5 rounded-xl border border-line bg-surface-2 p-2.5">{inner}</div>;
-                      })}
-                    </section>);
-                })}
-              </div>
+              {weekOutside && sem && <p role="status" className="rounded-xl border border-line bg-surface-2 p-3 text-sm text-fg-muted">This {view} is outside {sem.name} ({rangeLabel(sem.startsOn, sem.endsOn)}), so no classes run. Use Today or the arrows to move back.</p>}
+              {(m1.error || m2.error) && <p role="status" className="text-xs text-warn">Holidays and exam periods could not be loaded; the weekly pattern is shown without them.</p>}
+              <TimetableGrid entries={entries} dates={dates} info={info} today={today} showBatch={mode === "faculty" || !entityId} onOpen={openEntry} />
             </>)}
           </Boundary>
         </>)}

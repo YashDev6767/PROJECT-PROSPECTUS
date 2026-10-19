@@ -90,7 +90,7 @@ function TeachingSessions({ date, campusId, track }: { date: string; campusId: s
   const { items, notices } = res.data;
   return (
     <div className="mt-4 border-t border-line pt-3">
-      <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-fg">Classes planned ({items.length})</h3><Link className="text-xs font-semibold text-accent-text underline" to={`/session-logs?date=${date}`}>Open in Session Logs</Link></div>
+      <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-fg">Classes planned ({items.length})</h3><Link className="inline-flex min-h-11 items-center text-xs font-semibold text-accent-text underline lg:min-h-0" to={`/session-logs?date=${date}`}>Open in Session Logs</Link></div>
       {items.length === 0 ? <p className="text-sm text-fg-subtle">{notices[0] ? `No regular classes: ${notices[0].reason === "exam_period" ? "this is inside an exam period." : notices[0].reason.replace(/_/g, " ") + "."}` : "No classes in the timetable for this day."}</p> : (
         <ul className="space-y-1.5">{items.map((i) => (
           <li key={i.key} className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -105,7 +105,7 @@ function DayPanel({ day, data, writable, onAdd, onEdit, onDelete, campusId }: { 
   const entries = data.entries.filter((e) => day.entryIds.includes(e.id));
   const exams = data.exams.filter((e) => day.examIds.includes(e.id));
   return (
-    <Card title={longDate(day.date)} action={writable && <Button className="min-h-9 px-3" onClick={onAdd}><Plus className="size-4" aria-hidden /> Add entry</Button>}>
+    <Card title={longDate(day.date)} action={writable && <Button className="min-h-11 px-3 lg:min-h-9" onClick={onAdd}><Plus className="size-4" aria-hidden /> Add entry</Button>}>
       <p className="mb-3"><Badge tone={day.working ? "good" : "neutral"}>{reasonText[day.reason]}</Badge></p>
       {entries.length + exams.length === 0 ? <p className="text-sm text-fg-subtle">Nothing scheduled on this day.</p> : (
         <ul className="space-y-2">
@@ -117,8 +117,8 @@ function DayPanel({ day, data, writable, onAdd, onEdit, onDelete, campusId }: { 
                 {e.description && <p className="mt-1 text-sm text-fg-muted">{e.description}</p>}
               </div>
               {writable && <div className="flex shrink-0 gap-1">
-                <Button variant="ghost" className="min-h-9 px-2" aria-label={`Edit ${e.title}`} onClick={() => onEdit(e)}><Pencil className="size-4" aria-hidden /></Button>
-                <Button variant="ghost" className="min-h-9 px-2 text-danger" aria-label={`Delete ${e.title}`} onClick={() => onDelete(e)}><Trash2 className="size-4" aria-hidden /></Button>
+                <Button variant="ghost" className="min-h-11 min-w-11 px-2 lg:min-h-9 lg:min-w-9" aria-label={`Edit ${e.title}`} onClick={() => onEdit(e)}><Pencil className="size-4" aria-hidden /></Button>
+                <Button variant="ghost" className="min-h-11 min-w-11 px-2 text-danger lg:min-h-9 lg:min-w-9" aria-label={`Delete ${e.title}`} onClick={() => onDelete(e)}><Trash2 className="size-4" aria-hidden /></Button>
               </div>}
             </li>))}
           {exams.map((e) => (
@@ -192,8 +192,8 @@ function Agenda({ data, writable, onEdit, onDelete }: { data: MonthData; writabl
           <div className="flex items-center gap-1">
             <span className={cx("rounded-full px-2.5 py-0.5 text-xs font-semibold", i.tone)}>{i.kind}</span>
             {writable && i.entry && <>
-              <Button variant="ghost" className="min-h-9 px-2" aria-label={`Edit ${i.title}`} onClick={() => onEdit(i.entry!)}><Pencil className="size-4" aria-hidden /></Button>
-              <Button variant="ghost" className="min-h-9 px-2 text-danger" aria-label={`Delete ${i.title}`} onClick={() => onDelete(i.entry!)}><Trash2 className="size-4" aria-hidden /></Button>
+              <Button variant="ghost" className="min-h-11 min-w-11 px-2 lg:min-h-9 lg:min-w-9" aria-label={`Edit ${i.title}`} onClick={() => onEdit(i.entry!)}><Pencil className="size-4" aria-hidden /></Button>
+              <Button variant="ghost" className="min-h-11 min-w-11 px-2 text-danger lg:min-h-9 lg:min-w-9" aria-label={`Delete ${i.title}`} onClick={() => onDelete(i.entry!)}><Trash2 className="size-4" aria-hidden /></Button>
             </>}
           </div>
         </li>))}

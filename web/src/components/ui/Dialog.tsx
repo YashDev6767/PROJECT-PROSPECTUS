@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { prefersReducedMotion } from "./motion";
 
@@ -38,17 +39,20 @@ export function Dialog({ title, onClose, children, wide }: { title: string; onCl
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
+  // Portalled to <body>: an ancestor with a transform/filter (e.g. the page-enter wrapper) would otherwise become the
+  // containing block of this fixed layer and the dialog would be positioned against the whole page, not the viewport.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6">
       <div className={`absolute inset-0 bg-scrim ${leaving ? "scrim-out" : "scrim-in"}`} onClick={requestClose} aria-hidden />
       <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId}
-        className={`glass relative max-h-[92vh] w-full overflow-y-auto rounded-t-card bg-surface/95 p-5 shadow-pop sm:rounded-card ${leaving ? "dialog-out" : "dialog-in"} ${wide ? "sm:max-w-2xl" : "sm:max-w-lg"}`}>
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 id={titleId} className="text-lg font-semibold tracking-tight text-fg">{title}</h2>
-          <button type="button" onClick={requestClose} aria-label="Close dialog" className="-mr-2 -mt-1 grid size-10 place-items-center rounded-xl text-fg-subtle hover:bg-surface-3"><X className="size-5" /></button>
+        className={`glass relative flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-t-card bg-surface/95 shadow-pop sm:max-h-[calc(100dvh-3rem)] sm:rounded-card ${leaving ? "dialog-out" : "dialog-in"} ${wide ? "sm:max-w-2xl" : "sm:max-w-lg"}`}>
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-line px-5 py-3">
+          <h2 id={titleId} className="pt-1.5 text-lg font-semibold tracking-tight text-fg">{title}</h2>
+          <button type="button" onClick={requestClose} aria-label="Close dialog" className="-mr-2 grid size-10 place-items-center rounded-xl text-fg-subtle hover:bg-surface-3"><X className="size-5" /></button>
         </div>
-        {children}
+        <div data-dialog-body className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-4">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

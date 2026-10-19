@@ -29,6 +29,8 @@ export interface EngineInput {
   asOf: ISODate;
   thresholds: Thresholds;
   deadlineExamType: ExamType;
+  /** Measure readiness against one specific exam instead of the configured syllabus-deadline exam type. */
+  deadlineOverride?: Deadline;
 }
 
 export interface EngineResult {
@@ -45,7 +47,7 @@ export function runSubjectEngine(i: EngineInput): EngineResult {
 
   const applicable = i.exams.filter((e) => e.batchId === null || e.batchId === i.batchId);
   const tctx = { rule: i.semester.saturdayRule, calendar: i.calendar, examPeriods: applicable.map((e) => ({ startsOn: e.startsOn, endsOn: e.endsOn })) };
-  const deadline = pickDeadline(i.exams, i.batchId, end, i.deadlineExamType);
+  const deadline = i.deadlineOverride ?? pickDeadline(i.exams, i.batchId, end, i.deadlineExamType);
   const windowEnd = deadline.lastTeachingDate < end ? deadline.lastTeachingDate : end;
   const baseline = occurrencesBetween(i.slots, start, windowEnd, tctx);
   const afterDeadline = windowEnd < end ? occurrencesBetween(i.slots, addDays(windowEnd, 1), end, tctx) : [];
