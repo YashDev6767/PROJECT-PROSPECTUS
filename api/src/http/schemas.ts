@@ -12,7 +12,8 @@ export const isoDate = z.string().refine(isValidISODate, "Use a real date in YYY
 const text = (max: number) => z.string().trim().min(1, "Required").max(max, `At most ${max} characters`);
 const optionalText = (max: number) =>
   z.string().trim().max(max, `At most ${max} characters`).nullish().transform((v) => (v ? v : null));
-const id = z.string().min(1).max(64);
+// 128, not 64: the seeded University-track timetable ids are 67 characters ("sample-tt-<subject id>-<n>"), and a 64 limit made those classes impossible to log.
+const id = z.string().min(1).max(128);
 
 export const campusId = z.enum(campusIds, { message: "Unknown campus" });
 export const track = z.enum(["MIRAI", "UNIVERSITY"], { message: "Track must be MIRAI or UNIVERSITY" });

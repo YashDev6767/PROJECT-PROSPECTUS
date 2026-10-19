@@ -35,7 +35,7 @@ Node.js ≥ 20.18 and npm ≥ 10. PostgreSQL: either Docker **or** the bundled e
 
 ## Launch
 ```bash
-npm install
+npm install                           # also generates the Prisma client (postinstall)
 cp .env.example .env                  # set POSTGRES_PASSWORD / DATABASE_URL if you change the defaults
 
 # 1) a database — pick ONE (keep it running in its own terminal)

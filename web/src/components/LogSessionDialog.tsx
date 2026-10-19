@@ -173,6 +173,9 @@ function LogForm({ item, detail, existing, sameDayLogs, onClose, onSaved }: { it
       {existing && <Field label="Why are you correcting this log?" error={err.correctionNote} hint="Required — kept in the log's history"><Input value={correction} onChange={(e) => setCorrection(e.target.value)} maxLength={500} /></Field>}
 
       <p className="text-xs text-fg-subtle">Current status of this subject: <RiskBadge status={detail.progress.risk} /> <span className="ml-1">{detail.progress.coveragePct ?? 0}% covered</span> {existing && <Badge>revision {existing.revision}</Badge>}</p>
+      {(["subjectId", "heldOn", "timetableEntryId", "makeupOfId"] as const).some((k) => err[k]) && (
+        <p role="alert" className="rounded-xl border border-danger/30 bg-danger-soft p-3 text-sm text-danger">{(["subjectId", "heldOn", "timetableEntryId", "makeupOfId"] as const).map((k) => err[k]).filter(Boolean).join(" ")}</p>
+      )}
       <SubmitFeedback state={s} />
       <div className="sticky bottom-0 -mx-5 -mb-5 mt-5 flex justify-end gap-2 border-t border-line bg-surface/90 px-5 py-3 backdrop-blur">
         <Button onClick={onClose}>Cancel</Button>
