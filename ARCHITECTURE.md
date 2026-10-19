@@ -51,7 +51,8 @@ Deadline = the start of the preferred exam (End-term by default; per-exam for Ex
 2. **Evaluation / staging:** operator-issued accounts (`AUTH_USERS`, scrypt hashes) → `POST /api/auth/login` → HMAC-signed HttpOnly session cookie; logout revokes the token; sessions expire.
 3. **Production gate:** with demo headers off, every `/api` route except `/health`, `/meta` and `/auth/*` requires a session; writes additionally need the role's capability (`domain/permissions.ts`); faculty can only log or correct their own subjects.
 4. **Student portal:** `/api/student/portal` serves one batch only — the batch comes from the account (`batchId`) on the server, never from the request; staff must name a batch; the route is read-only.
-Not provided: SSO/OAuth, MFA, password reset, campus-level scoping of managers, scheduled notifications. See `SUBMISSION.md`.
+5. **Campus isolation:** `http/scope.ts` resolves a Scope per request from trusted data (admin = all unless limited by `campusIds`; manager = `campusIds`; faculty = linked faculty record's campus; student = linked batch's campus; empty = 403 `no_campus_assigned`) and every data route applies it with three helpers — `campusWhere` (restrict the Prisma query), `assertCampus` (named/target campus, 403) and `hideOutOfScope` (record by id, 404). The identity middleware attaches the scope; a test enumerates the Express router and fails if a route is not classified.
+Not provided: SSO/OAuth, MFA, password reset, batch-level isolation outside the student portal, scheduled notifications. See `SUBMISSION.md`.
 
 ## Tests
 `api/src/**/*.test.ts` (pure domain, security, auth, env), `api/src/**/*.int.test.ts` (real PostgreSQL via `TEST_DATABASE_URL`), `web/src/test/*.test.tsx` (components, pages, login, theme contrast, provenance), `e2e/*.spec.ts` (Playwright on :5183/:4010 with its own database).

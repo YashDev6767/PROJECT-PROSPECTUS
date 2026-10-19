@@ -15,7 +15,7 @@ Audit date: 19 Oct 2026. Every status below was checked against the current code
 | 7 | Student experience | **PASS** | Dedicated `/my-learning` portal (own batch: hour-weighted progress, covered/upcoming topics, next classes, exams with scope), server-bound to one batch, read-only (`student.int.test.ts`, `studentPortal.test.tsx`, `e2e/student-portal.spec.ts`). Plus the shared read-only pages: Overview, Subjects → subject detail with per-topic status and next/forecast dates, Syllabus (read-only, shows exam tags), Timetable, Exam Schedule, Exam Readiness; no write controls; the API refuses their writes. Browser-checked; e2e `login.spec.ts`. | Per batch, not per student (no roster, no individual marks); the batch link is operator-configured; other read endpoints are not limited to the student's campus. |
 | 8 | Missed-session reminders & 48 h escalation | **FAIL** | Nothing is scheduled, emailed or escalated. Only on-screen warnings exist: "Log pending", unlogged-session counts, the Session Logs queue, reports. | Needs a scheduler, a delivery channel and escalation state (≥ 1–2 days, external credentials). Documented, not faked. |
 | 9 | Import / export | **PARTIAL** | CSV export of subjects, timetable, exams, calendar, syllabus and five report types (formula-safe cells, tested). CSV **import: syllabus only**. | **No Excel (.xlsx) support at all.** No CSV import for semesters, batches, subjects, timetables. |
-| 10 | Roles, security, reliability | **PARTIAL** | Four roles; capability matrix enforced on every write; faculty can log/correct only their own subjects; student and anonymous writes refused (probed live: 403 / 401); signed HttpOnly session cookie with expiry and server-side revocation on logout; production read gate; log revision history; DB failure → 503/500 with clear UI, never demo numbers. | No campus scoping (below); no audit trail for configuration edits; no SSO/MFA/reset. |
+| 10 | Roles, security, reliability | **PARTIAL** | Four roles; capability matrix enforced on every write; campus scope on every data route; faculty can log/correct only their own subjects; student and anonymous writes refused (probed live: 403 / 401); signed HttpOnly session cookie with expiry and server-side revocation on logout; production read gate; log revision history; DB failure → 503/500 with clear UI, never demo numbers. | Campus isolation enforced server-side (limits documented: role-based within a campus, public `/meta`, unscoped dev demo mode); no audit trail for configuration edits; no SSO/MFA/reset. |
 
 ## 2. Security findings
 
@@ -24,7 +24,7 @@ Audit date: 19 Oct 2026. Every status below was checked against the current code
 | **Critical** | `ALLOW_DEMO_HEADERS=false` was parsed as **true** (`z.coerce.boolean`). | `api/src/config/env.ts` | **Fixed** (strict parser + tests) |
 | **High** | In production **every read endpoint, including all CSV exports of academic setup, answered anonymous requests (200)**, even with sign-in configured. Verified by probing. | `api/src/app.ts` | **Fixed**: with demo headers off, all `/api` routes except `/health`, `/meta`, `/auth/*` need a session. Re-probed: 22 data routes anonymous → 401; test `security.test.ts`. |
 | Medium | Logout did not invalidate the token; a copied cookie stayed valid until expiry. | `services/auth.ts` | **Fixed**: per-token id + in-memory revocation (cleared on restart). Re-probed + `auth.test.ts`. |
-| **High (for any multi-campus deployment)** | **No campus scoping.** Accounts have a role, not a campus: a campus manager can write to any campus (probed: created and deleted a faculty row at another campus), and every signed-in role reads all campuses. | all routes | **Not fixed** (needs campus on accounts + checks on ~30 routes; not safe in this window). Documented. |
+| **High (for any multi-campus deployment)** | **Campus isolation was missing** (a manager could write to any campus; every role read all campuses). | all data routes | **Fixed**: server-side campus scope on all 54 data routes (reads restricted in the query; writes/moves/cross-references refused; exports and aggregates scoped; fail closed without a campus). 43 integration tests on two seeded campuses; a route-inventory guard. Limits: README "Remaining limits of campus isolation". |
 | Medium | Demo role headers are spoofable by design in development. | `http/errors.ts` | By design; off in production; never expose the dev server. |
 | Low | Rate limiting only on sign-in (in memory); sessions are stateless apart from the revocation list; no CSRF token beyond SameSite=Lax + JSON bodies. | — | Documented |
 | Info | Verified OK: student/anonymous mutations refused on all probed write routes; faculty ownership (integration test); CORS rejects other origins; invalid JSON and DB errors return generic messages; CSV cells neutralise `= + - @`; password hashes (scrypt) only in `.env`, which is gitignored (not tracked, checked). | — | — |
@@ -34,8 +34,8 @@ Audit date: 19 Oct 2026. Every status below was checked against the current code
 | Command | Result |
 |---|---|
 | `npm run typecheck` | no errors |
-| `npm test` | **202 API + 192 web = 394 passed**, 0 failed |
-| `npm run test:integration` (real PostgreSQL; applies migrations to the test DB) | **103 passed**, 7 files |
+| `npm test` | **202 API + 193 web = 395 passed**, 0 failed |
+| `npm run test:integration` (real PostgreSQL; applies migrations to the test DB) | **146 passed**, 8 files |
 | `npm run build` | succeeded (API + web) |
 | `npx playwright test` | **66 passed, 1 skipped, 0 failed** (desktop + mobile viewports) |
 | Live API probe in production mode (4 accounts) | read gate, role checks, logout revocation, CORS, error shape as above |
@@ -54,12 +54,15 @@ The seed covers four campuses (HI-Tech, Ratnam, RGIB, JUJ) × two tracks (Mirai,
 
 ## Update: smart carry-forward and student portal
 No database migration was needed (carry-forward uses the existing LEFTOVER/COVERED topic entries; students are linked to a batch in `AUTH_USERS`). Verified on a copy of the working tree with a brand-new embedded database (2 migrations applied, seed 1,162 logs): the portal and carry-forward both work on seeded University-track data. In browser tests the three e2e failures seen mid-work were caused by my own new spec polluting the shared "E2E Spring" semester (the older specs' helper picked its first subject); the spec now uses its own semester and the full suite passes.
-The earlier statement that campus isolation is missing still stands: only the new portal is batch-bound.
+Campus isolation has since been implemented (next section).
+
+## Update: campus isolation
+Scope model: admin = organization-wide by role (or limited via `campusIds`), campus manager = `campusIds` (none = no access), faculty = campus of the linked faculty record, student = campus of the linked batch; anything unresolvable fails closed (`403 no_campus_assigned`). No schema migration: scope comes from `AUTH_USERS` and existing relations. **Existing accounts need attention:** any non-admin account created before this change has no campus until it is given one (`campusIds` for managers; faculty/student accounts keep working only if their linked faculty/batch exists). Organization-wide admins are unchanged. Verified: 54 data routes scoped + 6 public/auth routes classified (60), a guard that fails on any unclassified route, 43 campus integration tests (A/B manager, faculty, student, limited admin, org admin, no-campus accounts, anonymous, spoofed headers, exports, dashboard aggregates, nested references, database side effects), and a browser check with real scoped sessions. Not claimed: batch-level isolation outside `/my-learning`; protection against a compromised `AUTH_USERS`/server.
 
 ## Submission artefacts
 Present: README, `ARCHITECTURE.md`, this file, `JUDGING_WALKTHROUGH.md`, seed data for four campuses × two tracks, automated test suites. **Not present:** demo video, hosted URL, Dockerfile/CI, load-test or accessibility-audit evidence, cross-browser evidence.
 
 ## 5. Priorities
 - **P0:** none open. (Closed this audit: demo-header parsing, anonymous reads in production.)
-- **P1:** campus scoping for manager/faculty/student accounts (before any real multi-campus use); scheduled reminders + 48 h escalation; decide how to describe requirement 8 and Excel to judges (they are not built).
+- **P1:** scheduled reminders + 48 h escalation; decide how to describe requirement 8 and Excel to judges (they are not built).
 - **P2:** Excel import/export; dedicated student page; carry-forward pre-fill; audit trail for configuration changes; Dockerfile/CI; hosted deployment.

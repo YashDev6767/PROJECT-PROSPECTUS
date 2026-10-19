@@ -3,6 +3,7 @@ import { z } from "zod";
 import { asyncHandler, callerBatch, callerRole, HttpError, needDb, notFound, parse, requireCapability } from "../http/errors.js";
 import { buildStudentPortal } from "../services/studentPortal.js";
 import type { Deps } from "./deps.js";
+import { hideOutOfScope } from "../http/scope.js";
 
 const query = z.object({ batchId: z.string().min(1).max(128).optional() });
 
@@ -28,6 +29,10 @@ export function studentRouter({ db, settings, today }: Deps): Router {
       if (!q.batchId) throw new HttpError(400, "validation_failed", "The request has invalid fields", { issues: [{ path: "batchId", message: "Choose a batch" }] });
       batchId = q.batchId;
     }
+    // the batch (whoever named it) must sit on a campus inside the caller's scope; otherwise it does not exist for them
+    const owner = await prisma.batch.findUnique({ where: { id: batchId }, select: { semester: { select: { campusId: true } } } });
+    if (!owner) throw notFound("Batch");
+    hideOutOfScope(res, owner.semester.campusId, "Batch");
     const data = await buildStudentPortal(prisma, batchId, today(), settings);
     if (!data) throw notFound("Batch");
     res.json(data);

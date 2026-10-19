@@ -73,8 +73,8 @@ export async function validateAgainstData(prisma: PrismaClient, ctx: SubjectCont
 
   let merge: LogContext["merge"] = null;
   if (d.mergedIntoId) {
-    const primary = await prisma.sessionLog.findUnique({ where: { id: d.mergedIntoId }, include: { subject: true } });
-    merge = primary
+    const primary = await prisma.sessionLog.findUnique({ where: { id: d.mergedIntoId }, include: { subject: { include: { batch: { include: { semester: true } } } } } });
+    merge = primary && primary.subject.batch.semester.campusId === sem.campusId // a primary session on another campus is "not found"
       ? { found: true, isSelf: primary.id === excludeLogId, sameDate: iso(primary.heldOn) === d.heldOn, sameFaculty: primary.subject.facultyId !== null && primary.subject.facultyId === s.facultyId, primaryOutcome: primary.outcome as Outcome }
       : { found: false, isSelf: false, sameDate: false, sameFaculty: false, primaryOutcome: null };
   }

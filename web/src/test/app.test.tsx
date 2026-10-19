@@ -83,3 +83,19 @@ describe("reports section", () => {
     expect(await screen.findByText("Reports isn't available to the Student role")).toBeInTheDocument();
   });
 });
+
+describe("campus scope", () => {
+  it("a remembered campus outside the account's scope falls back to the campus the server picks (no dead end)", async () => {
+    localStorage.setItem("prospectus.campus", "juj");
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      const u = String(input); urls.push(u);
+      if (u.includes("/api/auth")) return new Response("{}");
+      if (u.includes("campusId=juj")) return new Response(JSON.stringify({ error: "forbidden_campus", message: "Your account is not allowed to access that campus." }), { status: 403 });
+      return new Response(JSON.stringify(dashboard));
+    }));
+    renderApp();
+    expect(await screen.findByText("Syllabus covered")).toBeInTheDocument();
+    expect(urls.filter((u) => u.startsWith("/api/dashboard")).map((u) => u.includes("campusId"))).toEqual([true, false]); // the second request names no campus: the server decides
+  });
+});

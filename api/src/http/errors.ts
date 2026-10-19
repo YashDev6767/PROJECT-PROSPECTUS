@@ -35,7 +35,7 @@ export function needDb(db: Database) {
 }
 
 /** Who is calling, as established by the server: a verified session cookie, or (only when allowed) the spoofable demo headers. */
-export interface Identity { source: "session" | "demo"; role: DemoRole; facultyId: string | null; batchId: string | null; email: string | null }
+export interface Identity { source: "session" | "demo"; role: DemoRole; facultyId: string | null; batchId: string | null; email: string | null; /** campus scope, see http/scope.ts */ scope: import("./scope.js").Scope }
 
 /**
  * Authorization: the signed session wins; the demo `X-Demo-Role` / `X-Demo-Faculty` headers are honoured only when the operator allows

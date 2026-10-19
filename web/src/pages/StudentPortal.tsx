@@ -85,7 +85,7 @@ export function StudentPortal() {
 
   if (demo && !batchId) return <div className="space-y-8"><PageHeader title="My learning" subtitle="Your subjects, progress, coming classes and exams" />{picker}<EmptyState icon={GraduationCap} title="Choose a batch to preview">The student view shows one batch at a time.</EmptyState></div>;
   if (res.error && !res.data) {
-    const noBatch = res.error instanceof ApiError && res.error.code === "no_batch_assigned";
+    const noBatch = res.error instanceof ApiError && (res.error.code === "no_batch_assigned" || res.error.code === "no_campus_assigned");
     return (
       <div className="space-y-8"><PageHeader title="My learning" subtitle="Your subjects, progress, coming classes and exams" />{picker}
         {noBatch ? <EmptyState icon={UserRoundX} title="Your account isn't linked to a batch yet">Ask the administrator to link your account to your batch. Until then there is nothing to show.</EmptyState>

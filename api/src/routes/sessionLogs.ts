@@ -10,6 +10,7 @@ import { computeSubjectResult, loadSubjectContexts, summarize } from "../service
 import { sessionsInRange } from "../services/scheduleData.js";
 import { logInclude, serializeLog, validateAgainstData } from "../services/sessionLogData.js";
 import type { Deps } from "./deps.js";
+import { assertCampus, campusWhere, hideOutOfScope, inScope, scopeOf } from "../http/scope.js";
 
 /** Demo identity: which faculty member the caller says they are. NOT verified — see README. */
 
@@ -31,6 +32,7 @@ export function sessionLogsRouter(deps: Deps): Router {
   /* ---- schedule (planned classes + their log state) ---- */
   r.get("/session-logs/schedule", asyncHandler(async (req, res) => {
     const q = parse(scheduleQuery, req.query);
+    assertCampus(res, q.campusId);
     const prisma = needDb(db);
     const { items, notices } = await sessionsInRange(prisma, { from: q.date, to: q.date, campusId: q.campusId, track: q.track, facultyId: q.facultyId });
     res.json({ date: q.date, today: today(), items, notices });
@@ -38,6 +40,7 @@ export function sessionLogsRouter(deps: Deps): Router {
 
   r.get("/session-logs/pending", asyncHandler(async (req, res) => {
     const q = parse(pendingQuery, req.query);
+    assertCampus(res, q.campusId);
     const prisma = needDb(db);
     const to = addDays(today(), -1);
     const { items } = await sessionsInRange(prisma, { from: addDays(today(), -q.days), to, campusId: q.campusId, track: q.track, facultyId: q.facultyId });
@@ -50,6 +53,7 @@ export function sessionLogsRouter(deps: Deps): Router {
     const prisma = needDb(db);
     const [ctx] = await loadSubjectContexts(prisma, { id: q.subjectId });
     if (!ctx) throw notFound("Subject");
+    hideOutOfScope(res, ctx.subject.batch.semester.campusId, "Subject");
     assertOwnership(callerRole(res), callerFaculty(res), ctx.subject);
     const s = ctx.subject;
     const result = carryForwardFor({
@@ -70,7 +74,7 @@ export function sessionLogsRouter(deps: Deps): Router {
       subjectId: q.subjectId, outcome: q.outcome,
       heldOn: { gte: q.from ? dbDate(q.from) : undefined, lte: q.to ? dbDate(q.to) : undefined },
       reviewedAt: q.reviewed === undefined ? undefined : q.reviewed === "true" ? { not: null } : null,
-      subject: { facultyId: faculty ?? undefined, batchId: q.batchId, batch: { semesterId: q.semesterId, semester: { campusId: q.campusId, track: q.track } } },
+      subject: { facultyId: faculty ?? undefined, batchId: q.batchId, batch: { semesterId: q.semesterId, semester: { campusId: campusWhere(res, q.campusId), track: q.track } } },
     };
     const rows = await prisma.sessionLog.findMany({ where, include: logInclude, orderBy: [{ heldOn: "desc" }, { createdAt: "desc" }], take: q.limit });
     res.json({ logs: rows.map(serializeLog), limit: q.limit });
@@ -80,6 +84,7 @@ export function sessionLogsRouter(deps: Deps): Router {
     const prisma = needDb(db);
     const row = await prisma.sessionLog.findUnique({ where: { id: req.params.id! }, include: { ...logInclude, revisions: { orderBy: { revision: "desc" } }, mergedLogs: { select: { id: true, subject: { select: { name: true, batch: { select: { name: true } } } } } } } });
     if (!row) throw notFound("Session log");
+    hideOutOfScope(res, row.subject.batch.semester.campusId, "Session log");
     if (callerRole(res) === "faculty") assertOwnership("faculty", callerFaculty(res), row.subject);
     res.json({
       ...serializeLog(row),
@@ -94,7 +99,7 @@ export function sessionLogsRouter(deps: Deps): Router {
     const prisma = needDb(db);
     const role = callerRole(res);
     const [ctx] = await loadSubjectContexts(prisma, { id: b.subjectId });
-    if (!ctx) throw validationFailed([{ path: "subjectId", message: "Subject not found" }]);
+    if (!ctx || !inScope(scopeOf(res), ctx.subject.batch.semester.campusId)) throw validationFailed([{ path: "subjectId", message: "Subject not found" }]);
     assertOwnership(role, callerFaculty(res), ctx.subject);
 
     // one log per scheduled session: refuse a second one and point at the existing log (correct it instead)
@@ -127,6 +132,7 @@ export function sessionLogsRouter(deps: Deps): Router {
     const role = callerRole(res);
     const current = await prisma.sessionLog.findUnique({ where: { id: req.params.id! }, include: { ...logInclude, mergedLogs: { select: { id: true } }, makeup: { select: { id: true } } } });
     if (!current) throw notFound("Session log");
+    hideOutOfScope(res, current.subject.batch.semester.campusId, "Session log");
     assertOwnership(role, callerFaculty(res), current.subject);
 
     const [ctx] = await loadSubjectContexts(prisma, { id: current.subjectId });
@@ -173,7 +179,9 @@ export function sessionLogsRouter(deps: Deps): Router {
   r.post("/session-logs/:id/review", requireCapability("sessions:review"), asyncHandler(async (req, res) => {
     const { note } = parse(reviewBody, req.body);
     const prisma = needDb(db);
-    if (!(await prisma.sessionLog.findUnique({ where: { id: req.params.id! } }))) throw notFound("Session log");
+    const target = await prisma.sessionLog.findUnique({ where: { id: req.params.id! }, include: { subject: { include: { batch: { include: { semester: true } } } } } });
+    if (!target) throw notFound("Session log");
+    hideOutOfScope(res, target.subject.batch.semester.campusId, "Session log");
     const updated = await prisma.sessionLog.update({ where: { id: req.params.id! }, data: { reviewedAt: new Date(), reviewedByRole: callerRole(res), reviewNote: note }, include: logInclude });
     res.json(serializeLog(updated));
   }));

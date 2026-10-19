@@ -5,6 +5,7 @@ import { dbDate, iso } from "../services/format.js";
 import { computeSubjectResult, loadSubjectContexts, rollup, summarize } from "../services/progressionData.js";
 import { logInclude, serializeLog } from "../services/sessionLogData.js";
 import type { Deps } from "./deps.js";
+import { assertCampus, hideOutOfScope } from "../http/scope.js";
 
 export function progressionRouter({ db, settings, today }: Deps): Router {
   const r = Router();
@@ -15,6 +16,7 @@ export function progressionRouter({ db, settings, today }: Deps): Router {
     const prisma = needDb(db);
     const [ctx] = await loadSubjectContexts(prisma, { id: req.params.id! });
     if (!ctx) throw notFound("Subject");
+    hideOutOfScope(res, ctx.subject.batch.semester.campusId, "Subject");
     const result = computeSubjectResult(ctx, asOf ?? today(), settings);
     const recent = await prisma.sessionLog.findMany({ where: { subjectId: ctx.subject.id, heldOn: { lte: dbDate(result.referenceDate) } }, include: logInclude, orderBy: [{ heldOn: "desc" }, { createdAt: "desc" }], take: 8 });
     res.json({
@@ -29,6 +31,7 @@ export function progressionRouter({ db, settings, today }: Deps): Router {
   /** Subject rows plus batch / track / campus roll-ups (worst subject wins). */
   r.get("/progression", asyncHandler(async (req, res) => {
     const q = parse(progressionQuery, req.query);
+    assertCampus(res, q.campusId);
     const prisma = needDb(db);
     const asOf = q.asOf ?? today();
     const semesters = q.semesterId

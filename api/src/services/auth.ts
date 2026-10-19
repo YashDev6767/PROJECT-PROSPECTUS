@@ -9,6 +9,7 @@
  */
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import { campuses } from "../data/campuses.js";
 import type { DemoRole } from "../domain/permissions.js";
 
 export const SESSION_COOKIE = "prospectus_session";
@@ -18,12 +19,14 @@ const userSchema = z.object({
   role: z.enum(["admin", "campus_manager", "faculty", "student"]),
   name: z.string().trim().max(80).optional(),
   facultyId: z.string().trim().min(1).max(128).optional(),
+  /** Campus managers: the campuses the account may work in (none = no access). Admins: omit for organization-wide access, or list campuses to limit the account. Faculty and students never use this: their campus comes from their linked faculty record / batch. */
+  campusIds: z.array(z.string()).max(20).refine((a) => a.every((c) => campuses.some((k) => k.id === c)), "campusIds must be known campus ids").optional(),
   /** Students only: the one batch whose learning data the account may see (operator-issued; the server never takes it from the browser). */
   batchId: z.string().trim().min(1).max(128).optional(),
   passwordHash: z.string().regex(/^scrypt:[0-9a-f]{32}:[0-9a-f]{128}$/, "passwordHash must come from `npm run auth:hash`"),
 });
 export type AuthUser = z.infer<typeof userSchema>;
-export interface SessionUser { email: string; role: DemoRole; name: string | null; facultyId: string | null; batchId: string | null }
+export interface SessionUser { email: string; role: DemoRole; name: string | null; facultyId: string | null; batchId: string | null; campusIds: string[] | null }
 
 /** Same format the `npm run auth:hash` script writes: scrypt:<16-byte salt hex>:<64-byte hash hex>. */
 export function hashPassword(password: string, salt: Buffer = randomBytes(16)): string {
@@ -84,7 +87,7 @@ export function createAuth(input: AuthConfigInput): Auth {
     login(email, password) {
       const user = byEmail.get(email.trim().toLowerCase());
       const ok = verifyPassword(password, user?.passwordHash ?? dummy);
-      return user && ok ? { email: user.email, role: user.role, name: user.name ?? null, facultyId: user.facultyId ?? null, batchId: user.batchId ?? null } : null;
+      return user && ok ? { email: user.email, role: user.role, name: user.name ?? null, facultyId: user.facultyId ?? null, batchId: user.batchId ?? null, campusIds: user.campusIds ?? null } : null;
     },
     issue(user, nowMs) {
       const body = b64(JSON.stringify({ e: user.email, r: user.role, n: user.name, f: user.facultyId, x: Math.floor(nowMs / 1000) + ttlSeconds, j: randomBytes(12).toString("hex") }));
@@ -95,7 +98,7 @@ export function createAuth(input: AuthConfigInput): Auth {
       if (!p) return null;
       const user = byEmail.get(p.e);
       if (!user || p.x * 1000 < nowMs || user.role !== p.r || (p.j && revoked.has(p.j))) return null; // unknown/changed accounts, expired or logged-out sessions
-      return { email: user.email, role: user.role, name: user.name ?? null, facultyId: user.facultyId ?? null, batchId: user.batchId ?? null };
+      return { email: user.email, role: user.role, name: user.name ?? null, facultyId: user.facultyId ?? null, batchId: user.batchId ?? null, campusIds: user.campusIds ?? null };
     },
     revoke(cookieHeader, nowMs) {
       const p = verify(tokenOf(cookieHeader));

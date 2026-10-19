@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { fetchAuthConfig, fetchDashboard, fetchSession, setApiBatch, setApiFaculty, setApiRole, setApiSession, signInRequest, signOutRequest, type AuthConfig, type SessionUser } from "../lib/api";
+import { ApiError, fetchAuthConfig, fetchDashboard, fetchSession, setApiBatch, setApiFaculty, setApiRole, setApiSession, signInRequest, signOutRequest, type AuthConfig, type SessionUser } from "../lib/api";
 import { can as canDo, type Capability } from "../lib/permissions";
 import { roles, type Role } from "../lib/roles";
 import type { Campus, Dashboard } from "../lib/types";
@@ -77,7 +77,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (controller.signal.aborted) return;
         if (campusId) { // a stale stored campus id: fall back to the default campus
           const message = error instanceof Error ? error.message : "";
-          if (message.includes("404")) { setCampusId(null); return; }
+          // unknown campus (404) or a campus outside this account's scope (403): fall back to the campus the server picks for the account
+          if (message.includes("404") || (error instanceof ApiError && error.code === "forbidden_campus")) { setCampusId(null); return; }
         }
         setDashboard({ status: "error", message: error instanceof Error ? error.message : "Network error" });
       });

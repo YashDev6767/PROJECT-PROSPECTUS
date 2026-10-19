@@ -320,7 +320,7 @@ describe("smart carry-forward in the logging dialog", () => {
     const dialog = await open();
     const box2 = await within(dialog).findByRole("checkbox", { name: "Carry forward Topic 2" });
     const box3 = within(dialog).getByRole("checkbox", { name: "Carry forward Topic 3" });
-    expect(box2).toBeChecked(); expect(box3).toBeChecked();
+    await waitFor(() => { expect(box2).toBeChecked(); expect(box3).toBeChecked(); }); // the pre-selection lands one render after the list appears
     for (const g of ["Topic 2"]) expect(within(within(dialog).getByRole("group", { name: `${g} progress this session` })).getByRole("button", { name: "Not today" })).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(box3); // select only some items
     const t1 = within(dialog).getByRole("group", { name: "Topic 1 progress this session" });

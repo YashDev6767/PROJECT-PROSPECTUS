@@ -25,6 +25,7 @@ import { authRouter } from "./routes/auth.js";
 import { createAuth } from "./services/auth.js";
 import { roleFromHeader } from "./domain/permissions.js";
 import { HttpError, type Identity } from "./http/errors.js";
+import { isEmpty, resolveScope } from "./http/scope.js";
 
 export function createApp(env: Pick<Env, "CORS_ORIGIN"> & Partial<Pick<Env, "APP_TIME_ZONE" | "RISK_ON_TRACK_BUFFER" | "RISK_TIGHT_BUFFER" | "SYLLABUS_DEADLINE_EXAM_TYPE" | "NODE_ENV" | "ALLOW_DEMO_HEADERS" | "AUTH_USERS" | "SESSION_SECRET" | "SESSION_TTL_HOURS">>, db: Database, now: () => Date = () => new Date()) {
   const app = express();
@@ -38,15 +39,21 @@ export function createApp(env: Pick<Env, "CORS_ORIGIN"> & Partial<Pick<Env, "APP
 
   const auth = createAuth(env);
   const allowDemo = app.locals.allowDemoHeaders as boolean;
-  // Establish the caller once per request. A valid signed session always wins over demo headers.
+  // Establish the caller (and their campus scope) once per request. A valid signed session always wins over demo headers.
   app.use("/api", (req, res, next) => {
-    const session = auth.read(req.headers.cookie, now().getTime());
-    if (session) res.locals.identity = { source: "session", role: session.role, facultyId: session.facultyId, batchId: session.batchId, email: session.email } satisfies Identity;
-    else if (allowDemo) {
-      const role = roleFromHeader(req.header("x-demo-role"));
-      if (role) res.locals.identity = { source: "demo", role, facultyId: req.header("x-demo-faculty")?.trim() || null, batchId: req.header("x-demo-batch")?.trim() || null, email: null } satisfies Identity;
-    }
-    next();
+    void (async () => {
+      const session = auth.read(req.headers.cookie, now().getTime());
+      if (session) {
+        const scope = await resolveScope(db.prisma, { role: session.role, source: "session", campusIds: session.campusIds, facultyId: session.facultyId, batchId: session.batchId });
+        res.locals.identity = { source: "session", role: session.role, facultyId: session.facultyId, batchId: session.batchId, email: session.email, scope } satisfies Identity;
+      } else if (allowDemo) {
+        const role = roleFromHeader(req.header("x-demo-role"));
+        if (role) {
+          const scope = await resolveScope(db.prisma, { role, source: "demo", campusIds: null, facultyId: null, batchId: null, demoCampusHeader: req.header("x-demo-campus") });
+          res.locals.identity = { source: "demo", role, facultyId: req.header("x-demo-faculty")?.trim() || null, batchId: req.header("x-demo-batch")?.trim() || null, email: null, scope } satisfies Identity;
+        }
+      }
+    })().then(() => next(), next);
   });
   app.use("/api", authRouter(auth, allowDemo, now));
   // Whenever the spoofable demo headers are off (production), academic data — including every CSV export — needs a verified session.
@@ -55,6 +62,16 @@ export function createApp(env: Pick<Env, "CORS_ORIGIN"> & Partial<Pick<Env, "APP
     const anonymousOk = (path: string) => path === "/health" || path === "/meta";
     app.use("/api", (req, res, next) => (res.locals.identity || anonymousOk(req.path) ? next() : next(new HttpError(401, "unauthenticated", req.header("x-demo-role") ? "Demo authentication headers (X-Demo-Role) are disabled in production mode. Production deployment requires server-verified authentication — sign in." : "Sign in to view academic data."))));
   }
+
+  // Fail closed: an authenticated caller whose campus scope is empty (no campus assigned, unknown linked faculty/batch, ...) can use nothing
+  // beyond liveness, static metadata and sign-in. This runs in every mode, before any route.
+  app.use("/api", (req, res, next) => {
+    const id = res.locals.identity as Identity | undefined;
+    if (id && isEmpty(id.scope) && req.path !== "/health" && req.path !== "/meta") {
+      return next(new HttpError(403, "no_campus_assigned", "Your account is not linked to any campus, so it cannot access academic data. Ask the administrator to assign a campus (campus managers), link your faculty record (faculty) or your batch (students)."));
+    }
+    next();
+  });
 
   const settings = resolveSettings(env);
   const deps = { db, now, settings, today: () => todayInZone(now(), settings.timeZone) };

@@ -112,9 +112,9 @@ suite("student portal: scoping, read-only and correctness (PostgreSQL)", () => {
     expect((await request(prod).get(`/api/student/portal?batchId=${ids.bZ}`).set("Cookie", a).set("X-Demo-Batch", ids.bZ!).set("X-Demo-Role", "admin")).status).toBe(403); // headers cannot override the session
   });
 
-  it("a student account with no batch gets a clear 409, not broad access", async () => {
+  it("a student account with no batch has no campus either: it is refused outright (403), not given broad access", async () => {
     const res = await portal(none);
-    expect(res.status).toBe(409); expect(res.body.error).toBe("no_batch_assigned");
+    expect(res.status).toBe(403); expect(res.body.error).toBe("no_campus_assigned");
     expect(JSON.stringify(res.body)).not.toContain("Alpha");
   });
 

@@ -4,6 +4,7 @@ import { findSemesterOverlaps, semesterStatus } from "../domain/semesters.js";
 import { asyncHandler, failOnIssues, HttpError, inUse, needDb, needsConfirmation, notFound, parse, requireCapability } from "../http/errors.js";
 import { campusId, confirmBody, semesterCreate, semesterIssues, semesterUpdate, track } from "../http/schemas.js";
 import { dbDate, iso } from "../services/format.js";
+import { assertCampus, campusWhere, hideOutOfScope } from "../http/scope.js";
 import type { Deps } from "./deps.js";
 
 type Row = { id: string; name: string; academicYear: string; track: "MIRAI" | "UNIVERSITY"; campusId: string; startsOn: Date; endsOn: Date; saturdayRule: "ALL" | "NONE" | "SECOND_FOURTH"; isActive: boolean; isSample: boolean; _count?: { batches: number; exams: number } };
@@ -27,13 +28,14 @@ export function semestersRouter({ db, today: todayFn }: Deps): Router {
   r.get("/semesters", asyncHandler(async (req, res) => {
     const q = parse(z.object({ campusId: campusId.optional(), track: track.optional() }), req.query);
     const prisma = needDb(db);
-    const rows = await prisma.semester.findMany({ where: { campusId: q.campusId, track: q.track }, orderBy: [{ startsOn: "desc" }, { name: "asc" }], include: counts });
+    const rows = await prisma.semester.findMany({ where: { campusId: campusWhere(res, q.campusId), track: q.track }, orderBy: [{ startsOn: "desc" }, { name: "asc" }], include: counts });
     res.json({ semesters: rows.map((s) => serializeSemester(s, today())) });
   }));
 
   r.post("/semesters", requireCapability("semesters:write"), asyncHandler(async (req, res) => {
     const b = parse(semesterCreate, req.body);
     failOnIssues(semesterIssues(b));
+    assertCampus(res, b.campusId); // may not create a semester on a campus outside the account's scope
     const prisma = needDb(db);
     const siblings = await prisma.semester.findMany({ where: { campusId: b.campusId, track: b.track } });
     const hits = findSemesterOverlaps({ campusId: b.campusId, track: b.track, startsOn: b.startsOn, endsOn: b.endsOn }, siblings.map(range));
@@ -50,6 +52,8 @@ export function semestersRouter({ db, today: todayFn }: Deps): Router {
     const prisma = needDb(db);
     const current = await prisma.semester.findUnique({ where: { id: req.params.id }, include: counts });
     if (!current) throw notFound("Semester");
+    hideOutOfScope(res, current.campusId, "Semester");
+    if (b.campusId !== undefined) assertCampus(res, b.campusId); // nor move one onto another campus
     const merged = {
       name: b.name ?? current.name, academicYear: b.academicYear ?? current.academicYear, track: b.track ?? current.track,
       campusId: b.campusId ?? current.campusId, startsOn: b.startsOn ?? iso(current.startsOn), endsOn: b.endsOn ?? iso(current.endsOn),
@@ -81,6 +85,7 @@ export function semestersRouter({ db, today: todayFn }: Deps): Router {
     const prisma = needDb(db);
     const sem = await prisma.semester.findUnique({ where: { id: req.params.id } });
     if (!sem) throw notFound("Semester");
+    hideOutOfScope(res, sem.campusId, "Semester");
     if (iso(sem.endsOn) < today()) throw new HttpError(409, "semester_completed", "This semester has already ended and cannot be activated.");
     const others = await prisma.semester.findMany({ where: { campusId: sem.campusId, track: sem.track, isActive: true, id: { not: sem.id } } });
     if (others.length && !confirm) {
@@ -97,6 +102,7 @@ export function semestersRouter({ db, today: todayFn }: Deps): Router {
     const prisma = needDb(db);
     const exists = await prisma.semester.findUnique({ where: { id: req.params.id } });
     if (!exists) throw notFound("Semester");
+    hideOutOfScope(res, exists.campusId, "Semester");
     const updated = await prisma.semester.update({ where: { id: exists.id }, data: { isActive: false }, include: counts });
     res.json(serializeSemester(updated, today()));
   }));
@@ -105,6 +111,7 @@ export function semestersRouter({ db, today: todayFn }: Deps): Router {
     const prisma = needDb(db);
     const sem = await prisma.semester.findUnique({ where: { id: req.params.id }, include: counts });
     if (!sem) throw notFound("Semester");
+    hideOutOfScope(res, sem.campusId, "Semester");
     if (sem._count.batches || sem._count.exams) {
       throw inUse(`Cannot delete "${sem.name}": it still has ${sem._count.batches} batch(es) and ${sem._count.exams} exam(s). Remove those first.`, { batches: sem._count.batches, exams: sem._count.exams });
     }

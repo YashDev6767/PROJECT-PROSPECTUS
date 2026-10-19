@@ -3,9 +3,11 @@ import { z } from "zod";
 import { demoCampuses, demoSchedule, demoSemester, demoSessions, demoSubjects } from "../data/demo.js";
 import { buildDashboard } from "../domain/dashboard.js";
 import { buildLiveDashboard } from "../services/liveDashboard.js";
+import { HttpError } from "../http/errors.js";
+import { inScope, scopeOf } from "../http/scope.js";
 import type { Deps } from "./deps.js";
 
-const query = z.object({ campusId: z.string().min(1).max(64).default(demoCampuses[0]!.id) });
+const query = z.object({ campusId: z.string().min(1).max(64).optional() });
 
 /**
  * Live data when a database is connected and the campus has semesters; otherwise the labelled demo dataset.
@@ -20,11 +22,17 @@ export function dashboardRouter({ db, now, settings, today }: Deps): Router {
         res.status(400).json({ error: "invalid_query", issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })) });
         return;
       }
-      if (!demoCampuses.some((c) => c.id === parsed.data.campusId)) { res.status(404).json({ error: "campus_not_found" }); return; }
+      // Campus: a named campus must be in the caller's scope (403); otherwise default to the first campus the caller may see.
+      const scope = scopeOf(res);
+      const allowed = demoCampuses.filter((c) => inScope(scope, c.id));
+      const requested = parsed.data.campusId ?? allowed[0]?.id ?? demoCampuses[0]!.id;
+      if (!demoCampuses.some((c) => c.id === requested)) { res.status(404).json({ error: "campus_not_found" }); return; }
+      if (!inScope(scope, requested)) throw new HttpError(403, "forbidden_campus", "Your account is not allowed to access that campus.");
+      const withScopedCampuses = <T extends { campuses: Array<{ id: string }> }>(d: T): T => ({ ...d, campuses: d.campuses.filter((c) => inScope(scope, c.id)) });
       if (db.prisma) {
         try {
-          const live = await buildLiveDashboard(db.prisma, parsed.data.campusId, now(), today(), settings);
-          if (live) { res.json(live); return; }
+          const live = await buildLiveDashboard(db.prisma, requested, now(), today(), settings);
+          if (live) { res.json(withScopedCampuses(live)); return; }
           // a connected database with no semesters for this campus: the labelled demo dataset below (dataSource "demo")
         } catch (error) {
           // Never substitute demo numbers for a failed live computation: that would look like real, reassuring data.
@@ -35,9 +43,10 @@ export function dashboardRouter({ db, now, settings, today }: Deps): Router {
       }
       const data = buildDashboard(
         { campuses: demoCampuses, semester: demoSemester, subjects: demoSubjects, schedule: demoSchedule, sessions: demoSessions },
-        parsed.data.campusId, now(),
+        requested, now(),
       );
-      res.json(data);
+      if (!data) { res.status(404).json({ error: "campus_not_found" }); return; }
+      res.json(withScopedCampuses(data));
     } catch (error) { next(error); }
   });
   return router;

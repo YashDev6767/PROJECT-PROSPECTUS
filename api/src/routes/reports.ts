@@ -24,6 +24,7 @@ import {
   fetchTeachingDeliveryReport,
   type ReportFilter,
 } from "../services/reportsData.js";
+import { defaultCampus } from "../http/scope.js";
 import type { Deps } from "./deps.js";
 
 
@@ -52,8 +53,10 @@ export function reportsRouter(deps: Deps): Router {
       const prisma = needDb(db);
 
       const asOf = q.asOf ?? today();
+      const campus = defaultCampus(res, q.campusId); // checked against the caller's scope; unscoped only for organization-wide accounts
+      if (typeof campus === "object") throw campus.error;
       const filter: ReportFilter = {
-        campusId: q.campusId,
+        campusId: campus,
         track: q.track,
         semesterId: q.semesterId,
         batchId: q.batchId,
@@ -68,7 +71,7 @@ export function reportsRouter(deps: Deps): Router {
         generatedAt: new Date().toISOString(),
         asOf,
         filter: {
-          campusId: q.campusId,
+          campusId: campus,
           track: q.track,
           semesterId: q.semesterId,
           batchId: q.batchId,
@@ -130,8 +133,10 @@ export function reportsRouter(deps: Deps): Router {
       const prisma = needDb(db);
 
       const asOf = q.asOf ?? today();
+      const campus = defaultCampus(res, q.campusId); // checked against the caller's scope; unscoped only for organization-wide accounts
+      if (typeof campus === "object") throw campus.error;
       const filter: ReportFilter = {
-        campusId: q.campusId,
+        campusId: campus,
         track: q.track,
         semesterId: q.semesterId,
         batchId: q.batchId,

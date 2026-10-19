@@ -9,6 +9,7 @@ import { asyncHandler, callerRole, failOnIssues, HttpError, needDb, notFound, pa
 import { calendarFields, calendarIssues, calendarUpdate, campusId, monthQuery } from "../http/schemas.js";
 import { toEntryLike } from "../services/calendarData.js";
 import { dbDate, iso } from "../services/format.js";
+import { assertCampus, assertOrganizationWide, hideOutOfScope } from "../http/scope.js";
 import type { Deps } from "./deps.js";
 
 const DEFAULT_RULE: SaturdayRule = "SECOND_FOURTH";
@@ -24,11 +25,17 @@ function assertSpecialPermission(res: Parameters<typeof callerRole>[0], ...categ
   }
 }
 
+/** Writing an entry: a campus entry needs that campus in scope; an institution-wide entry (no campus) needs organization-wide scope. */
+const assertEntryCampus = (res: Parameters<typeof assertCampus>[0], campusId: string | null) => (campusId === null ? assertOrganizationWide(res) : assertCampus(res, campusId));
+/** An existing entry: other campuses' entries do not exist for this caller; institution-wide ones are visible but organization-wide only to change. */
+const assertOwnEntry = (res: Parameters<typeof assertCampus>[0], campusId: string | null) => (campusId === null ? assertOrganizationWide(res) : hideOutOfScope(res, campusId, "Calendar entry"));
+
 export function calendarRouter({ db }: Deps): Router {
   const r = Router();
 
   r.get("/calendar/month", asyncHandler(async (req, res) => {
     const q = parse(monthQuery, req.query);
+    assertCampus(res, q.campusId);
     const prisma = needDb(db);
     const { from, to } = monthBounds(q.month);
 
@@ -56,6 +63,7 @@ export function calendarRouter({ db }: Deps): Router {
 
   r.get("/calendar/export.csv", asyncHandler(async (req, res) => {
     const q = parse(z.object({ campusId }), req.query);
+    assertCampus(res, q.campusId);
     const prisma = needDb(db);
     const rows = await prisma.calendarEntry.findMany({ where: { OR: [{ campusId: null }, { campusId: q.campusId }] }, orderBy: [{ startsOn: "asc" }, { title: "asc" }] });
     res.type("text/csv").attachment(`calendar-${q.campusId}.csv`).send(toCsv(
@@ -69,6 +77,7 @@ export function calendarRouter({ db }: Deps): Router {
     const endsOn = b.endsOn ?? b.startsOn;
     failOnIssues(calendarIssues({ startsOn: b.startsOn, endsOn }));
     assertSpecialPermission(res, b.category);
+    assertEntryCampus(res, b.campusId);
     const prisma = needDb(db);
     const created = await prisma.calendarEntry.create({ data: { title: b.title, category: b.category, startsOn: dbDate(b.startsOn), endsOn: dbDate(endsOn), campusId: b.campusId, description: b.description } });
     res.status(201).json(serialize(created));
@@ -79,6 +88,8 @@ export function calendarRouter({ db }: Deps): Router {
     const prisma = needDb(db);
     const current = await prisma.calendarEntry.findUnique({ where: { id: req.params.id } });
     if (!current) throw notFound("Calendar entry");
+    assertOwnEntry(res, current.campusId);
+    if (b.campusId !== undefined) assertEntryCampus(res, b.campusId);
     const next = {
       title: b.title ?? current.title, category: b.category ?? current.category,
       startsOn: b.startsOn ?? iso(current.startsOn), endsOn: b.endsOn ?? iso(current.endsOn),
@@ -95,6 +106,7 @@ export function calendarRouter({ db }: Deps): Router {
     const prisma = needDb(db);
     const current = await prisma.calendarEntry.findUnique({ where: { id: req.params.id } });
     if (!current) throw notFound("Calendar entry");
+    assertOwnEntry(res, current.campusId);
     assertSpecialPermission(res, current.category);
     await prisma.calendarEntry.delete({ where: { id: current.id } });
     res.status(204).end();

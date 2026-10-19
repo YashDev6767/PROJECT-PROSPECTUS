@@ -35,7 +35,7 @@ describe("restricted evaluation sign-in", () => {
   it("signs in with a correct password and sets an HttpOnly, SameSite=Lax cookie (Secure in production)", async () => {
     const res = await login(app(), "ADMIN@msot.test", "admin-passphrase-1"); // email is case-insensitive
     expect(res.status).toBe(200);
-    expect(res.body.user).toEqual({ email: "admin@msot.test", role: "admin", name: "Test Admin", facultyId: null, batchId: null });
+    expect(res.body.user).toEqual({ email: "admin@msot.test", role: "admin", name: "Test Admin", facultyId: null, batchId: null, campusIds: null });
     expect(res.body.user.passwordHash).toBeUndefined();
     const flags = String(res.headers["set-cookie"]);
     expect(flags).toMatch(/HttpOnly/); expect(flags).toMatch(/SameSite=Lax/); expect(flags).toMatch(/Max-Age=28800/); expect(flags).not.toMatch(/Secure/);
@@ -112,9 +112,13 @@ describe("restricted evaluation sign-in", () => {
   it("production read gate: a session unlocks reads, anonymous and logged-out tokens do not", async () => {
     const a = app({ NODE_ENV: "production", ALLOW_DEMO_HEADERS: false });
     expect((await request(a).get("/api/dashboard?campusId=hi-tech")).status).toBe(401);
-    const student = cookieOf(await login(a, "student@msot.test", "student-passphrase-1"));
-    expect((await request(a).get("/api/dashboard?campusId=hi-tech").set("Cookie", student)).status).toBe(200);
+    const admin = cookieOf(await login(a, "admin@msot.test", "admin-passphrase-1"));
+    expect((await request(a).get("/api/dashboard?campusId=hi-tech").set("Cookie", admin)).status).toBe(200);
     expect((await request(a).get("/api/meta")).status).toBe(200);
+    // a student account that is not linked to a batch has no campus: signed in, but nothing is readable (fail closed)
+    const student = cookieOf(await login(a, "student@msot.test", "student-passphrase-1"));
+    const none = await request(a).get("/api/dashboard?campusId=hi-tech").set("Cookie", student);
+    expect(none.status).toBe(403); expect(none.body.error).toBe("no_campus_assigned");
   });
 
   it("logout revokes the token itself: replaying the old cookie after sign-out fails", async () => {

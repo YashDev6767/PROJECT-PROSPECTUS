@@ -52,8 +52,9 @@ See `SUBMISSION.md` for the requirements matrix and the actual recorded test run
 ## 7. Known limitations (read before judging)
 - **No scheduled reminders or Campus-Manager escalation** — warnings are on-screen only.
 - **Only the syllabus has CSV import**; semesters, calendar, exams, batches, subjects and timetables are entered through the UI.
-- **The student portal is per batch, not per student** (no roster or individual marks), and other read endpoints are still not limited to a student's campus.
-- **Authentication is a restricted evaluation sign-in**, not an identity platform (no SSO, reset, MFA, campus scoping). In production mode all data endpoints require a session; in local development reads stay open for the role preview.
+- **The student portal is per batch, not per student** (no roster or individual marks). Other pages are limited to the student's campus, not their batch.
+- **Campus isolation is enforced on the server** for signed-in accounts (managers by `campusIds`, faculty/students by their linked record); development demo mode is unscoped unless a demo campus is sent.
+- **Authentication is a restricted evaluation sign-in**, not an identity platform (no SSO, reset, MFA). In production mode all data endpoints require a session; in local development reads stay open for the role preview.
 - No hosted deployment is claimed; there is no Dockerfile or CI configuration.
 - A mid-semester timetable edit re-plans past sessions too (logged sessions keep their own slot snapshot).
 - Reports and exam readiness are capacity checks, not predictions of marks.
