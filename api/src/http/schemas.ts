@@ -140,3 +140,21 @@ export const scheduleQuery = z.object({ date: isoDate, campusId, track: track.op
 export const pendingQuery = z.object({ campusId, track: track.optional(), facultyId: id.optional(), days: z.coerce.number().int().min(1).max(31).default(14) });
 export const asOfQuery = z.object({ asOf: isoDate.optional() });
 export const progressionQuery = z.object({ campusId, track: track.optional(), semesterId: id.optional(), batchId: id.optional(), asOf: isoDate.optional() });
+
+/* ---------- Phase 11: Academic Intelligence & Reports ---------- */
+export const reportTypeEnum = z.enum(["course_progress", "teaching_delivery", "faculty_activity", "exam_readiness", "campus_track"]);
+export const reportQuery = z.object({
+  type: reportTypeEnum.default("course_progress"),
+  campusId: campusId.optional(),
+  track: track.optional(),
+  semesterId: id.optional(),
+  batchId: id.optional(),
+  subjectId: id.optional(),
+  facultyId: id.optional(),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+  asOf: isoDate.optional(),
+});
+export const reportExportQuery = reportQuery.extend({
+  format: z.enum(["csv"]).default("csv"),
+});

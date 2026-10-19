@@ -71,6 +71,7 @@ test("the theme menu works from the keyboard", async ({ page }) => {
 test("reduced motion removes entrance animations", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/calendar");
+  await page.locator(".page-enter").waitFor(); // the shell renders once the session probe has answered
   const ms = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector(".page-enter")!).animationDuration) * 1000);
   expect(ms).toBeLessThan(1);
 });
@@ -78,6 +79,7 @@ test("reduced motion removes entrance animations", async ({ page }) => {
 test("with motion allowed the page entrance is a short transition (≤ 400 ms)", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/calendar");
+  await page.locator(".page-enter").waitFor(); // the shell renders once the session probe has answered
   const ms = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector(".page-enter")!).animationDuration) * 1000);
   expect(ms).toBeGreaterThan(100);
   expect(ms).toBeLessThanOrEqual(400);

@@ -1,6 +1,6 @@
-import { PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
+import { LogOut, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
 import { useId } from "react";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { navFor, navGroupOrder, roleLabels, roles, type NavGroup, type NavItem, type Role } from "../../lib/roles";
 import { cx } from "../ui";
@@ -21,12 +21,12 @@ function NavItemLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed
       <NavLink to={item.path} end={item.path === "/"} onClick={onNavigate} aria-label={collapsed ? item.label : undefined}
         className={({ isActive }) => cx(
           "group relative flex h-10 items-center rounded-lg text-sm transition-colors duration-[var(--dur-fast)]",
-          isActive ? "bg-accent-soft/70 font-medium text-fg" : "text-fg-muted hover:bg-surface-3/70 hover:text-fg",
+          isActive ? "bg-accent-soft font-semibold text-accent-soft-fg shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_20%,transparent)]" : "text-fg-muted hover:bg-surface-3/70 hover:text-fg",
         )}>
         {({ isActive }) => (
           <>
-            {isActive && <span aria-hidden className="absolute -left-3 top-2 bottom-2 w-[3px] rounded-r-full bg-accent" />}
-            <span className={SLOT}><Icon strokeWidth={1.75} aria-hidden className={cx("size-[18px]", isActive ? "text-accent-text" : "text-fg-subtle group-hover:text-fg-2")} /></span>
+            {isActive && <span aria-hidden className="absolute left-1 top-2.5 bottom-2.5 w-[3px] rounded-full bg-accent" />}
+            <span className={SLOT}><Icon strokeWidth={isActive ? 2 : 1.75} aria-hidden className={cx("size-[18px]", isActive ? "text-accent" : "text-fg-subtle group-hover:text-fg-2")} /></span>
             <span className={cx("truncate pr-3 transition-opacity duration-[var(--dur-fast)]", collapsed && "pointer-events-none opacity-0")} aria-hidden={collapsed || undefined}>{item.label}</span>
           </>
         )}
@@ -36,9 +36,26 @@ function NavItemLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed
 }
 
 function RolePicker({ collapsed, onExpand }: { collapsed: boolean; onExpand?: (() => void) | undefined }) {
-  const { role, setRole } = useApp();
+  const { role, setRole, auth, signOut } = useApp();
+  const navigate = useNavigate();
   const selectId = useId();
   const avatar = <span aria-hidden className={cx(SLOT, "rounded-full bg-surface-3 text-fg-muted")}><UserRound className="size-[18px]" strokeWidth={1.75} /></span>;
+  if (auth.user) { // a verified session: the role is fixed by the server and cannot be switched here
+    const out = async () => { await signOut(); navigate("/login", { replace: true }); };
+    if (collapsed) {
+      return (
+        <Tooltip label={`${auth.user.email} · sign out`}>
+          <button type="button" onClick={() => void out()} aria-label={`Signed in as ${auth.user.email}, ${roleLabels[role]}. Sign out`} className="flex h-10 w-full items-center rounded-lg transition-colors hover:bg-surface-3/70">{avatar}</button>
+        </Tooltip>
+      );
+    }
+    return (
+      <div className="space-y-2 border-t border-line pt-3">
+        <div className="px-1"><p className="truncate text-sm font-medium text-fg" title={auth.user.email}>{auth.user.name ?? auth.user.email}</p><p className="truncate text-xs text-fg-subtle">{roleLabels[role]} · signed in</p></div>
+        <button type="button" onClick={() => void out()} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-sm text-fg-muted transition-colors hover:bg-surface-3/70 hover:text-fg"><LogOut className="size-4" aria-hidden /> Sign out</button>
+      </div>
+    );
+  }
   if (collapsed) {
     return (
       <Tooltip label={`Previewing as ${roleLabels[role]}`}>
@@ -47,11 +64,18 @@ function RolePicker({ collapsed, onExpand }: { collapsed: boolean; onExpand?: ((
     );
   }
   return (
-    <div className="space-y-1.5 border-t border-line pt-3">
-      <label htmlFor={selectId} className="flex items-baseline justify-between px-1 text-xs"><span className="font-medium text-fg-muted">Preview as</span><span className="text-fg-faint">demo, not a login</span></label>
-      <Select id={selectId} aria-label="Preview as role" className="min-h-9 text-sm" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+    <div className="rounded-xl border border-line bg-surface-2/70 p-2.5 space-y-1.5 transition-colors">
+      <div className="flex items-center justify-between px-0.5">
+        <label htmlFor={selectId} className="flex items-center gap-1.5 text-xs font-semibold text-fg">
+          <UserRound className="size-3.5 text-accent" aria-hidden />
+          <span>Role Preview</span>
+        </label>
+        <span className="text-[10px] font-medium text-fg-subtle">RBAC mode</span>
+      </div>
+      <Select id={selectId} aria-label="Preview as role" className="min-h-9 text-xs font-medium" value={role} onChange={(e) => setRole(e.target.value as Role)}>
         {roles.map((r) => <option key={r} value={r}>{roleLabels[r]}</option>)}
       </Select>
+      <Link to="/login" className="inline-flex min-h-10 items-center px-1 text-xs font-medium text-accent-text underline underline-offset-2">{auth.sessionLogin ? "Sign in with an account" : "Open the sign-in page"}</Link>
     </div>
   );
 }

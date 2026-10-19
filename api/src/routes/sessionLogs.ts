@@ -2,7 +2,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { Router } from "express";
 import { addDays } from "../domain/dates.js";
 import { type LogDraft } from "../domain/sessionLogs.js";
-import { asyncHandler, callerRole, HttpError, needDb, notFound, parse, requireCapability, validationFailed } from "../http/errors.js";
+import { asyncHandler, callerFaculty, callerRole, HttpError, needDb, notFound, parse, requireCapability, validationFailed } from "../http/errors.js";
 import { pendingQuery, reviewBody, scheduleQuery, sessionLogCreate, sessionLogQuery, sessionLogUpdate } from "../http/schemas.js";
 import { dbDate, iso } from "../services/format.js";
 import { computeSubjectResult, loadSubjectContexts, summarize } from "../services/progressionData.js";
@@ -11,7 +11,6 @@ import { logInclude, serializeLog, validateAgainstData } from "../services/sessi
 import type { Deps } from "./deps.js";
 
 /** Demo identity: which faculty member the caller says they are. NOT verified — see README. */
-const facultyHeader = (req: { header(n: string): string | undefined }) => req.header("x-demo-faculty")?.trim() || null;
 
 function assertOwnership(role: string | null, actorFaculty: string | null, subject: { facultyId: string | null; name: string }) {
   if (role !== "faculty") return; // admins and campus managers may log or correct on behalf of faculty
@@ -48,7 +47,7 @@ export function sessionLogsRouter(deps: Deps): Router {
   r.get("/session-logs", requireCapability("sessions:read"), asyncHandler(async (req, res) => {
     const q = parse(sessionLogQuery, req.query);
     const prisma = needDb(db);
-    const faculty = callerRole(res) === "faculty" ? facultyHeader(req) : q.facultyId ?? null;
+    const faculty = callerRole(res) === "faculty" ? callerFaculty(res) : q.facultyId ?? null;
     if (callerRole(res) === "faculty" && !faculty) throw new HttpError(403, "faculty_identity_required", "Choose which faculty member you are acting as (demo mode).");
     const where: Prisma.SessionLogWhereInput = {
       subjectId: q.subjectId, outcome: q.outcome,
@@ -64,7 +63,7 @@ export function sessionLogsRouter(deps: Deps): Router {
     const prisma = needDb(db);
     const row = await prisma.sessionLog.findUnique({ where: { id: req.params.id! }, include: { ...logInclude, revisions: { orderBy: { revision: "desc" } }, mergedLogs: { select: { id: true, subject: { select: { name: true, batch: { select: { name: true } } } } } } } });
     if (!row) throw notFound("Session log");
-    if (callerRole(res) === "faculty") assertOwnership("faculty", facultyHeader(req), row.subject);
+    if (callerRole(res) === "faculty") assertOwnership("faculty", callerFaculty(res), row.subject);
     res.json({
       ...serializeLog(row),
       revisions: row.revisions.map((v) => ({ revision: v.revision, note: v.note, changedByRole: v.changedByRole, at: v.createdAt.toISOString(), snapshot: v.snapshot })),
@@ -79,7 +78,7 @@ export function sessionLogsRouter(deps: Deps): Router {
     const role = callerRole(res);
     const [ctx] = await loadSubjectContexts(prisma, { id: b.subjectId });
     if (!ctx) throw validationFailed([{ path: "subjectId", message: "Subject not found" }]);
-    assertOwnership(role, facultyHeader(req), ctx.subject);
+    assertOwnership(role, callerFaculty(res), ctx.subject);
 
     // one log per scheduled session: refuse a second one and point at the existing log (correct it instead)
     const dup = b.timetableEntryId
@@ -96,7 +95,7 @@ export function sessionLogsRouter(deps: Deps): Router {
       data: {
         subjectId: b.subjectId, timetableEntryId: b.timetableEntryId, makeupOfId: b.makeupOfId, mergedIntoId: b.mergedIntoId, heldOn: dbDate(b.heldOn), ...slot,
         actualHours: b.actualHours, outcome: b.outcome, rescheduledTo: b.rescheduledTo ? dbDate(b.rescheduledTo) : null, carryForward: b.carryForward, notes: b.notes,
-        classworkStatus: b.classworkStatus, homeworkStatus: b.homeworkStatus, loggedByRole: role ?? "unknown", loggedByFacultyId: role === "faculty" ? facultyHeader(req) : null,
+        classworkStatus: b.classworkStatus, homeworkStatus: b.homeworkStatus, loggedByRole: role ?? "unknown", loggedByFacultyId: role === "faculty" ? callerFaculty(res) : null,
         topicEntries: { create: entriesOf(b) },
       },
       include: logInclude,
@@ -111,7 +110,7 @@ export function sessionLogsRouter(deps: Deps): Router {
     const role = callerRole(res);
     const current = await prisma.sessionLog.findUnique({ where: { id: req.params.id! }, include: { ...logInclude, mergedLogs: { select: { id: true } }, makeup: { select: { id: true } } } });
     if (!current) throw notFound("Session log");
-    assertOwnership(role, facultyHeader(req), current.subject);
+    assertOwnership(role, callerFaculty(res), current.subject);
 
     const [ctx] = await loadSubjectContexts(prisma, { id: current.subjectId });
     const had = serializeLog(current);

@@ -13,7 +13,10 @@ import { SubjectDetail } from "./pages/SubjectDetail";
 import { SessionLogs } from "./pages/SessionLogs";
 import { Syllabus } from "./pages/Syllabus";
 import { Timetable } from "./pages/Timetable";
+import { Reports } from "./pages/Reports";
 import { AccessGate } from "./components/layout/AccessGate";
+import { RequireAccess } from "./components/layout/RequireAccess";
+import { Login } from "./pages/Login";
 
 /** Each live page is wrapped so a role that can't see it in the navigation gets an explanation, not the page. */
 const guard = (path: string, el: ReactElement) => <AccessGate path={path}>{el}</AccessGate>;
@@ -21,7 +24,8 @@ const guard = (path: string, el: ReactElement) => <AccessGate path={path}>{el}</
 export function App() {
   return (
     <Routes>
-      <Route element={<AppShell />}>
+      <Route path="login" element={<Login />} />
+      <Route element={<RequireAccess><AppShell /></RequireAccess>}>
         <Route index element={<Overview />} />
         <Route path="calendar" element={guard("/calendar", <AcademicCalendar />)} />
         <Route path="semesters" element={guard("/semesters", <Semesters />)} />
@@ -33,7 +37,7 @@ export function App() {
         <Route path="settings" element={guard("/settings", <Settings />)} />
         <Route path="session-logs" element={guard("/session-logs", <SessionLogs />)} />
         <Route path="exam-readiness" element={<ExamReadiness />} />
-        <Route path="reports" element={<PhasePage />} />
+        <Route path="reports" element={guard("/reports", <Reports />)} />
         <Route path="*" element={<PhasePage />} />
       </Route>
     </Routes>

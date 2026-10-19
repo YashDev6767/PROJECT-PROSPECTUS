@@ -126,8 +126,18 @@ export function Timetable() {
               <Tabs label="Timetable view" value={view} onChange={setView} tabs={[{ id: "week", label: "Week" }, { id: "day", label: "Day" }]} />
             </div>
             {view === "day" && (
-              <div role="group" aria-label="Day of the week" className="flex gap-1 overflow-x-auto pb-0.5">
-                {week.map((d) => <button key={d} type="button" aria-pressed={d === anchor} onClick={() => setAnchor(d)} className={`min-h-10 min-w-14 shrink-0 rounded-lg border px-2 text-sm font-medium ${d === anchor ? "border-accent bg-accent-soft text-accent-soft-fg" : "border-line text-fg-muted hover:bg-surface-2"}`}>{weekdayNames[isoWeekday(d)]!.slice(0, 3)} <span className="tabular-nums">{Number(d.slice(8))}</span></button>)}
+              <div role="group" aria-label="Day of the week" className="flex gap-1.5 overflow-x-auto pb-1 pt-0.5">
+                {week.map((d) => (
+                  <button key={d} type="button" aria-pressed={d === anchor} onClick={() => setAnchor(d)}
+                    className={`min-h-11 min-w-16 shrink-0 rounded-xl border px-3 py-1 text-center transition-all ${
+                      d === anchor
+                        ? "border-accent bg-accent-soft text-accent-soft-fg shadow-sm font-semibold"
+                        : "border-line bg-surface text-fg-muted hover:border-line-strong hover:bg-surface-2 hover:text-fg"
+                    }`}>
+                    <span className="block text-[10px] font-medium uppercase tracking-wider text-fg-subtle">{weekdayNames[isoWeekday(d)]!.slice(0, 3)}</span>
+                    <span className="text-sm font-bold tabular-nums text-fg">{Number(d.slice(8))}</span>
+                  </button>
+                ))}
               </div>)}
           </div>
           <Boundary res={res} lines={4}>{({ entries, totalWeeklyHours }) => entries.length === 0 ? (

@@ -2,10 +2,12 @@
 
 Course progression platform for Mirai School of Technology (MSOT): academic setup (semesters, calendar, exams, batches, subjects, timetable, syllabus) today; session logging, progression and exam readiness in later phases.
 
-**Status: Phase 3 — course progression engine.**
-- Real, persisted (PostgreSQL) and fully working: Semesters, Academic Calendar, Exam Schedule, Subjects (+ syllabus), Timetable, Settings (batches, faculty), **Session Logs, and per-subject progression / risk**.
+**Status: Phase 14 — Release Checkpoint & Deployment Readiness.**
+- Real, persisted (PostgreSQL) and fully working: Semesters, Academic Calendar, Exam Schedule, Subjects (+ syllabus), Timetable, Settings (batches, faculty), **Session Logs, per-subject progression / risk, and Exam Readiness**.
 - The **Overview dashboard is live** (computed from the database) whenever the campus has academic setup; it falls back to the labelled built-in demo dataset only for a campus with no semesters or when no database is connected. The top bar says "Live data" or "Demo data".
-- **Exam Readiness** (`/exam-readiness`, `GET /api/exam-readiness?campusId[&track&semesterId&asOf]`) is built as an MVP: for every upcoming or under-way exam it measures each applicable subject's remaining syllabus hours against the teaching hours left before *that exam's start date* (same engine, holidays/exam weeks/cancellations respected). Topics tagged with an exam type (`examScope`, "first exam that assesses this topic") are counted cumulatively; a subject with no tagged topics is measured on its whole syllabus and says so. Subjects without syllabus hours show "Needs data" — no score, no marks prediction. Reports is still not built (Phase 4).
+- **Exam Readiness** (`/exam-readiness`, `GET /api/exam-readiness?campusId[&track&semesterId&asOf]`): measures each applicable subject's remaining syllabus hours against the teaching hours left before *that exam's start date* (holidays, exam weeks and cancellations respected). Features executive buffer ratio guide badges (`≥ 1.15 Healthy`, `1.00–1.14 Tight`, `< 1.00 Deficit`).
+- **Academic Intelligence & Reports** (`/reports`, `GET /api/reports?type=&...` and `GET /api/reports/export?format=csv`): 5 specialized analytical views (Course Progress, Faculty Activity, Teaching Delivery, Exam Readiness, Campus/Track Rollups) with live multi-dimensional filtering and formula-injection-safe CSV exports.
+- **Access:** local development uses the labelled "Preview as" role picker (spoofable headers, development only). A server-verified **restricted evaluation sign-in** (`/login`, signed HttpOnly session cookie, operator-issued accounts) exists for staging / the evaluation environment. It is not a full identity system — see "Access control & security architecture".
 
 ## Design system (light / dark)
 - **Themes:** Light, Dark and System (header menu, keyboard operable). The explicit choice is saved in `localStorage` (`prospectus.theme`); System follows the OS live. An inline script in `web/index.html` applies the saved theme before first paint, so there is no flash of the wrong theme. Changing theme cross-fades for ~220 ms (skipped with reduced motion).
@@ -16,6 +18,9 @@ Course progression platform for Mirai School of Technology (MSOT): academic setu
 
 ## Stack
 React 19 + TypeScript + Vite 6 · Tailwind CSS 4 · React Router 7 · Lucide · Express 4 + TypeScript + zod · Prisma 6 + PostgreSQL · Vitest · Playwright
+
+## Documentation
+`ARCHITECTURE.md` (diagrams and layering), `SUBMISSION.md` (requirements matrix, security findings, actual test results, limitations), `JUDGING_WALKTHROUGH.md` (demo script).
 
 ## Layout
 ```
@@ -143,18 +148,59 @@ Phase 3/4 hooks: `Subject` is the unit session logs attach to (`SessionLog.subje
 ## Sample data
 `npm run db:seed` adds clearly flagged sample rows for all four campuses and both tracks (10 semesters incl. one completed and one upcoming, batches, subjects, conflict-free timetables, calendar entries, exams, 5-unit syllabi). Names, codes, faculty and topics are **placeholders, not real MSOT courses or people**; the UI marks them "Sample". Seeding uses deterministic ids, so re-running inserts nothing new. `npm run db:clear-sample` removes only flagged rows.
 
-## Access control — demo only
-There is no authentication yet. The "Preview as" role selector is sent as an `X-Demo-Role` header and the API enforces a permission matrix on it (Admin: everything; Campus Manager: all academic setup except semesters; Faculty/Student: read-only; Special Working Days need their own capability). **Anyone can send any header, so this is not security.** Real sign-in and enforcement are Phase 4; the matrix and error handling are already in place (`api/src/domain/permissions.ts`, `api/src/http/errors.ts`).
+## Access control & security architecture
+Three layers, from least to most trustworthy:
+1. **Demo role headers (development only).** The "Preview as" picker sends `X-Demo-Role` / `X-Demo-Faculty`; the API enforces the capability matrix on them (`api/src/domain/permissions.ts`, `api/src/http/errors.ts`). Anyone can send any header, so this is **not security**. It is **on by default in development and off when `NODE_ENV=production`**; `ALLOW_DEMO_HEADERS=true|false` overrides it (strict boolean parsing: `"false"` really means false, anything unrecognised stops the server). Never enable it on a publicly reachable server.
+2. **Restricted evaluation sign-in (server-verified).** `/login` posts to `POST /api/auth/login`. Accounts exist only in the operator's environment (`AUTH_USERS`, JSON; passwords stored as scrypt hashes made with `npm run auth:hash`) — no sign-up, no database table, nothing in the repository. A successful sign-in sets an HttpOnly, SameSite=Lax (Secure in production) cookie holding a payload signed with HMAC-SHA256 (`SESSION_SECRET`, 32+ characters, required); the role and faculty identity are read from that signed cookie. A valid session always overrides demo headers (a signed-in student cannot elevate with `X-Demo-Role: admin`), wrong-password and unknown-email answers are identical, repeated failures are rate-limited (8 per 15 min per client+email), sessions expire after `SESSION_TTL_HOURS` (default 8) and logout clears the cookie. Verified by `api/src/auth.test.ts`, `api/src/auth.int.test.ts`, `web/src/test/login.test.tsx` and `e2e/login.spec.ts`.
+3. **Not provided.** No password reset, SSO/OAuth, MFA, account management UI, per-user audit trail (logs record the role and faculty), or CSRF tokens beyond SameSite + JSON-only writes. **Production read gate:** when demo headers are off (production), every `/api` route except `/health`, `/meta` and `/auth/*` requires a signed-in session — including every CSV export — and writes need the role's capability. In development (demo picker on) reads stay open for the labelled demo. **No campus scoping:** any signed-in campus manager, faculty member or student can read all campuses, and a campus manager can write to any campus (accounts carry a role, not a campus). Logout revokes the presented token server-side (in memory; cleared by a restart). Treat the deployment as a restricted evaluation environment, not a public service.
+
+### Safe demo access procedure
+- **Try the sign-in page locally (1 minute):** `npm run auth:add -- admin@example.edu admin 'a long passphrase'` writes a hashed account and a session secret into your gitignored `.env`; restart `npm run dev` and open <http://localhost:5173/login>. The sidebar also links to it ("Open the sign-in page" / "Sign in with an account"). The role picker keeps working in development.
+- **Local (laptop, judges at your screen):** nothing to configure — use the "Preview as" picker. Do not expose the dev server to the internet.
+- **Hosted / shared evaluation:** set `NODE_ENV=production`, leave `ALLOW_DEMO_HEADERS` unset (or `false`), then create accounts:
+  ```bash
+  npm run auth:hash -- 'a long passphrase for the admin'      # prints scrypt:...  (do this per account)
+  # .env (never commit it):
+  AUTH_USERS=[{"email":"judge.admin@example.edu","role":"admin","name":"Judge (admin)","passwordHash":"scrypt:..."},{"email":"judge.student@example.edu","role":"student","passwordHash":"scrypt:..."}]
+  SESSION_SECRET=<32+ random characters, e.g. `openssl rand -hex 32`>
+  ```
+  Share each passphrase out of band. With no `AUTH_USERS` the login page says sign-in is not configured and writes stay refused (401) — it never falls back to demo headers in production.
+
+## Deployment prerequisites & environment
+- **Node.js:** >= 20.18
+- **PostgreSQL:** >= 14
+- **Required Environment Variables:**
+  - `DATABASE_URL`: Production PostgreSQL connection string with SSL (`?sslmode=require`).
+  - `NODE_ENV`: Set to `production`.
+  - `CORS_ORIGIN`: Set to the production domain(s) (e.g., `https://prospectus.msot.edu.in`).
+  - `APP_TIME_ZONE`: Defaults to `Asia/Kolkata`.
+  - `ALLOW_DEMO_HEADERS`: Leave unset or `false` outside local development; `true` only for a password-gated internal network.
+  - `AUTH_USERS`, `SESSION_SECRET` (32+ chars), optional `SESSION_TTL_HOURS`: the restricted sign-in (see above). `VITE_API_BASE_URL` is only needed if the web build is served from a different origin than the API (then also add that origin to `CORS_ORIGIN`; cookies are sent with credentials).
+- **Reverse Proxy:** Configure Nginx or Caddy with HTTPS/TLS termination, HSTS, and rate limiting.
+
+## Database backup, migration & rollback procedures
+- **Backup before migration:** Always take a PostgreSQL logical dump before applying migrations:
+  ```bash
+  pg_dump -Fc -v -d "$DATABASE_URL" -f "prospectus_backup_$(date +%Y%m%d_%H%M%S).dump"
+  ```
+- **Deploying migrations:** Run `npm run db:deploy` (invokes `prisma migrate deploy`, applying only unapplied migrations safely).
+- **Rollback strategy:** If a migration fails, restore from the snapshot:
+  ```bash
+  pg_restore -c -v -d "$DATABASE_URL" "prospectus_backup_YYYYMMDD_HHMMSS.dump"
+  ```
 
 ## Known limitations
-- Phase 3: a timetable edit mid-semester re-plans *past* sessions too (the original plan is recomputed from the current timetable); logged sessions keep a snapshot of their own slot and hours. There is no log delete (correct or cancel instead) and the date/slot of a log cannot be edited.
+- Phase 3/14: a timetable edit mid-semester re-plans *past* sessions too (the original plan is recomputed from the current timetable); logged sessions keep a snapshot of their own slot and hours. There is no log delete (correct or cancel instead) and the date/slot of a log cannot be edited.
 - The single deadline per subject means a missed sessional/mid-term is not flagged separately (the Exam Readiness page measures each exam separately); topics with no exam tag are left out of exam-scoped readiness.
 - Sample session logs stop at 15 Oct 2026; as real time passes without new logs the sample subjects drift toward Tight/Danger (use the *As of* date on a subject to look back).
-- Notifications and alerts are not built (Phase 4).
-- No authentication (above). Faculty cannot yet edit their own syllabus.
+- Authentication is the restricted evaluation sign-in described above, not an identity platform; reads are open only in development. OAuth/SSO and campus-scoped accounts would be required for a public launch.
+- Carry-forward work is recorded and shown in the session-log detail, but is not pre-filled into the next session's logging form.
 - Calendar entries have campus scope but no track; the track selector only picks which semester's Saturday rule applies. If no semester covers a month, "2nd & 4th Saturdays" is used and the page says so.
 - Timetable classes are Monday–Saturday and weekly (no per-week exceptions). A subject belongs to one batch; to teach it to another batch add it again (syllabus can be copied via CSV export/import).
-- Semester capacity assumes the weekly timetable runs on every working day of the semester; exam periods do not suspend classes.
+- Semester capacity assumes the weekly timetable runs on every working day of the semester; holidays, special working days and **exam periods do suspend classes** (they are subtracted from available hours).
+- **No scheduled reminders or Campus-Manager escalation.** Missed or unlogged sessions are surfaced on screen ("Log pending", unlogged-session counts, the Session Logs queue and reports) but nothing is emailed, messaged or escalated automatically.
+- **Imports:** only the syllabus has CSV import (with row-level validation). Semesters, calendar, exams, batches, subjects, faculty and timetables are entered through the UI; most lists export to CSV.
+- The student experience is the shared read-only pages (Overview, Subjects → subject detail with per-topic status, Timetable, Exam Schedule, Exam Readiness); there is no separate student portal and no per-student data.
 - Calendar CSV import is not provided (export only); syllabus has full CSV import.
 - Hours are stored as floating-point numbers (fine for 0.25-hour steps).
 

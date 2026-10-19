@@ -35,8 +35,8 @@ describe("Overview", () => {
   });
 
   it("shows an error state with retry when the API fails", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(new Response("x", { status: 500 })).mockResolvedValue(new Response(JSON.stringify(dashboard)));
-    vi.stubGlobal("fetch", fetchMock);
+    let dashboardCalls = 0; // only the dashboard request fails the first time (the auth probes are separate requests)
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => (String(url).includes("/api/dashboard") && dashboardCalls++ === 0 ? new Response("x", { status: 500 }) : new Response(JSON.stringify(String(url).includes("/api/auth") ? {} : dashboard)))));
     renderApp();
     expect(await screen.findByRole("alert")).toHaveTextContent("500");
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
@@ -57,12 +57,29 @@ describe("role-aware navigation", () => {
   });
 });
 
-describe("unbuilt sections", () => {
-  it("say plainly that they are not available yet", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(dashboard))));
-    localStorage.setItem("prospectus.role", "admin"); // Reports is hidden from other roles
+describe("reports section", () => {
+  it("renders reports for admin role", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes("/api/dashboard")) return new Response(JSON.stringify(dashboard));
+      if (u.includes("/api/meta")) return new Response(JSON.stringify({ campuses: [campus] }));
+      if (u.includes("/api/faculty")) return new Response(JSON.stringify({ faculty: [] }));
+      return new Response(JSON.stringify({
+        reportType: "course_progress",
+        summary: { totalSubjects: 0, healthySubjects: 0, attentionSubjects: 0, criticalSubjects: 0, totalPlannedHours: 0, totalCoveredHours: 0, averageCoveragePct: 0 },
+        data: [],
+        campuses: [campus],
+      }));
+    }));
+    localStorage.setItem("prospectus.role", "admin");
     renderApp("/reports");
-    expect(await screen.findByText("Not available yet")).toBeInTheDocument();
-    expect(screen.getByText("Planned for Phase 4")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Reports" })).toBeInTheDocument();
+  });
+
+  it("blocks students from accessing reports via AccessGate", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(dashboard))));
+    localStorage.setItem("prospectus.role", "student");
+    renderApp("/reports");
+    expect(await screen.findByText("Reports isn't available to the Student role")).toBeInTheDocument();
   });
 });

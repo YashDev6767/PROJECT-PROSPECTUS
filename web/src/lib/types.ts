@@ -134,3 +134,199 @@ export interface ExamReadinessResponse {
   asOf: string; campusId: string; thresholds: { onTrack: number; tight: number };
   state: "ready" | "no_active_semester" | "no_exams"; message: string; exams: ExamReadinessExam[];
 }
+
+/* ---------- Phase 11: Academic Intelligence & Reports ---------- */
+export type ReportType = "course_progress" | "teaching_delivery" | "faculty_activity" | "exam_readiness" | "campus_track";
+
+export interface CourseProgressReportItem {
+  subjectId: string;
+  code: string;
+  name: string;
+  batchId: string;
+  batchName: string;
+  semesterId: string;
+  semesterName: string;
+  campusId: string;
+  track: Track;
+  facultyId: string | null;
+  facultyName: string | null;
+  status: RiskStatus;
+  coveragePct: number | null;
+  hoursInScope: number;
+  coveredHours: number;
+  remainingHours: number;
+  availableHours: number | null;
+  bufferRatio: number | null;
+  paceHours: number;
+  overdueCount: number;
+  projectedCompletion: string | null;
+  deadline: string;
+  deadlineLabel: string;
+  headline: string;
+  isSample: boolean;
+}
+
+export interface CourseProgressSummary {
+  totalSubjects: number;
+  overallStatus: RiskStatus | null;
+  riskCounts: Record<RiskStatus, number>;
+  totalHoursInScope: number;
+  totalCoveredHours: number;
+  totalRemainingHours: number;
+  totalAvailableHours: number;
+  aggregateCoveragePct: number | null;
+}
+
+export interface TeachingDeliveryReportItem {
+  subjectId: string;
+  code: string;
+  name: string;
+  batchId: string;
+  batchName: string;
+  semesterId: string;
+  semesterName: string;
+  campusId: string;
+  track: Track;
+  facultyId: string | null;
+  facultyName: string | null;
+  totalScheduled: number;
+  completed: number;
+  inProgress: number;
+  cancelled: number;
+  skipped: number;
+  merged: number;
+  scheduledHours: number;
+  actualHours: number;
+  unloggedPast: number;
+  deliveryRatePct: number | null;
+  isSample: boolean;
+}
+
+export interface TeachingDeliverySummary {
+  totalScheduled: number;
+  totalCompleted: number;
+  totalInProgress: number;
+  totalCancelled: number;
+  totalSkipped: number;
+  totalMerged: number;
+  totalScheduledHours: number;
+  totalActualHours: number;
+  totalUnloggedPast: number;
+  overallDeliveryRatePct: number | null;
+}
+
+export interface FacultyActivityReportItem {
+  facultyId: string;
+  facultyName: string;
+  email: string | null;
+  campusId: string;
+  assignedSubjectsCount: number;
+  totalLogs: number;
+  completedLogs: number;
+  inProgressLogs: number;
+  cancelledLogs: number;
+  skippedLogs: number;
+  mergedLogs: number;
+  hoursTaught: number;
+  reviewedLogs: number;
+  pendingReviewLogs: number;
+  lastLoggedOn: string | null;
+  unloggedPast: number;
+  isSample: boolean;
+}
+
+export interface FacultyActivitySummary {
+  totalFaculty: number;
+  totalLogs: number;
+  totalCompleted: number;
+  totalHoursTaught: number;
+  totalReviewed: number;
+  totalPendingReview: number;
+  totalUnloggedPast: number;
+}
+
+export interface ExamReadinessReportItem {
+  examId: string;
+  examName: string;
+  examType: ExamType;
+  examTypeLabel: string;
+  startsOn: string;
+  endsOn: string;
+  daysToStart: number;
+  phase: "upcoming" | "in_progress";
+  lastTeachingDate: string;
+  subjectId: string;
+  code: string;
+  name: string;
+  batchName: string;
+  facultyName: string | null;
+  status: RiskStatus;
+  coveragePct: number | null;
+  hoursInScope: number;
+  coveredHours: number;
+  remainingHours: number;
+  availableHours: number | null;
+  bufferRatio: number | null;
+  scopeMode: "exam_scope" | "whole_syllabus";
+  unscopedTopics: number;
+  headline: string;
+  isSample: boolean;
+}
+
+export interface ExamReadinessReportSummary {
+  totalExams: number;
+  totalAssessedSubjects: number;
+  atRiskCount: number;
+  onTrackCount: number;
+  completeCount: number;
+  needsDataCount: number;
+}
+
+export interface CampusTrackSummaryReportItem {
+  campusId: string;
+  campusName: string;
+  track: Track;
+  activeSemesterName: string | null;
+  totalSubjects: number;
+  overallStatus: RiskStatus | null;
+  riskCounts: Record<RiskStatus, number>;
+  hoursInScope: number;
+  coveredHours: number;
+  remainingHours: number;
+  coveragePct: number | null;
+  hoursTaught: number;
+  totalScheduled: number;
+  totalLogs: number;
+}
+
+export interface CampusTrackSummarySummary {
+  totalCampuses: number;
+  totalSubjects: number;
+  institutionalStatus: RiskStatus | null;
+  totalHoursInScope: number;
+  totalCoveredHours: number;
+  totalRemainingHours: number;
+  aggregateCoveragePct: number | null;
+  totalHoursTaught: number;
+}
+
+export interface ReportsResponse {
+  type: ReportType;
+  generatedAt: string;
+  asOf: string;
+  filter: {
+    campusId?: string;
+    track?: Track;
+    semesterId?: string;
+    batchId?: string;
+    subjectId?: string;
+    facultyId?: string;
+    from?: string;
+    to?: string;
+  };
+  courseProgress?: { items: CourseProgressReportItem[]; summary: CourseProgressSummary };
+  teachingDelivery?: { items: TeachingDeliveryReportItem[]; summary: TeachingDeliverySummary };
+  facultyActivity?: { items: FacultyActivityReportItem[]; summary: FacultyActivitySummary };
+  examReadiness?: { items: ExamReadinessReportItem[]; summary: ExamReadinessReportSummary };
+  campusTrack?: { items: CampusTrackSummaryReportItem[]; summary: CampusTrackSummarySummary };
+}

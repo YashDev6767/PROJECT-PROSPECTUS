@@ -10,7 +10,7 @@ const server = app.listen(env.API_PORT, async () => {
   const status = await db.check();
   console.log(`PROSPECTUS API listening on http://localhost:${env.API_PORT}`);
   console.log(`Database: ${status.state}${"detail" in status ? ` (${status.detail})` : ""}`);
-  console.log("Dashboard data source: DEMO dataset (not persisted)");
+  console.log(`Access: sign-in ${env.AUTH_USERS ? "configured" : "NOT configured"}; demo role headers ${env.ALLOW_DEMO_HEADERS ? "ENABLED (development only — never on a public server)" : "disabled"}`);
 });
 
 const shutdown = () => server.close(() => db.close().finally(() => process.exit(0)));

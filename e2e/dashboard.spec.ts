@@ -20,12 +20,13 @@ test("campus switch refetches the dashboard", async ({ page }) => {
   await expect(page.getByText(/Friday|Saturday|Sunday|Monday|Tuesday|Wednesday|Thursday/).first()).toContainText("Ratnam");
 });
 
-test("unbuilt sections are honest about their status", async ({ page, isMobile }) => {
+test("reports page loads for admin", async ({ page, isMobile }) => {
   await page.evaluate(() => localStorage.setItem("prospectus.role", "admin")); // Reports is only offered to admins and campus managers
   await page.reload();
   if (isMobile) await page.getByRole("button", { name: "Open menu" }).click();
   await page.getByRole("navigation", { name: "Primary" }).locator("visible=true").getByRole("link", { name: "Reports" }).click();
-  await expect(page.getByText("Not available yet")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
+  await expect(page.getByText("Not available yet")).toHaveCount(0);
 });
 
 test("students do not see Log a session", async ({ page, isMobile }) => {

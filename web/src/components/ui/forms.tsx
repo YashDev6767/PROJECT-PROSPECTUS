@@ -5,7 +5,7 @@ import { Button } from "./index";
 import { cx } from "./index";
 
 // Control styling adapted from the Origin UI input pattern: quiet border, emerald 3 px focus ring, 150 ms transition.
-const control = "min-h-11 w-full lg:min-h-10 rounded-xl border border-line-strong bg-surface px-3 text-sm text-fg-2 shadow-[0_1px_0_rgb(0_0_0/0.02)] transition-[border-color,box-shadow] duration-150 placeholder:text-fg-faint hover:border-fg-faint focus-visible:border-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent/25 disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-fg-subtle aria-[invalid=true]:border-danger aria-[invalid=true]:focus-visible:ring-danger/25";
+export const control = "min-h-11 w-full lg:min-h-10 rounded-xl border border-line-strong bg-surface px-3 text-sm text-fg-2 shadow-[0_1px_0_rgb(0_0_0/0.02)] transition-[border-color,box-shadow] duration-150 placeholder:text-fg-faint hover:border-fg-faint focus-visible:border-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent/25 disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-fg-subtle aria-[invalid=true]:border-danger aria-[invalid=true]:focus-visible:ring-danger/25";
 export const Input = (p: InputHTMLAttributes<HTMLInputElement>) => <input {...p} className={cx(control, p.className)} />;
 export function Select({ wrapperClassName, className, ...p }: SelectHTMLAttributes<HTMLSelectElement> & { wrapperClassName?: string }) {
   return (

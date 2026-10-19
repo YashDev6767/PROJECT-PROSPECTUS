@@ -24,6 +24,8 @@
     "db:embedded": "node scripts/embedded-db.mjs",
     "db:deploy": "npm run db:deploy -w api",
     "db:clear-sample": "npm run db:clear-sample -w api",
+    "auth:hash": "node scripts/hash-password.mjs",
+    "auth:add": "node scripts/add-dev-account.mjs",
     "test:integration": "npm run test:integration -w api"
   },
   "devDependencies": {

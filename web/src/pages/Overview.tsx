@@ -138,10 +138,20 @@ export function Overview() {
         return (
           <>
             {live && d.state && d.state.kind !== "ready" ? null : live ? (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-fg-muted">
-                  <span className="font-medium text-fg">Overall status</span> <RiskBadge status={d.overall?.status ?? null} />
-                  {d.overall?.worstSubject && d.overall.status !== "COMPLETE" && <span>decided by the worst subject: <Link className="-my-2.5 inline-block py-2.5 font-semibold text-accent-text underline underline-offset-2" to={`/subjects/${d.overall.worstSubject.id}`}>{d.overall.worstSubject.name}</Link> ({d.overall.worstSubject.batchName})</span>}
-                  {d.overall && d.overall.byTrack.length > 1 && <span className="text-xs text-fg-subtle">· {d.overall.byTrack.map((t) => `${t.track === "MIRAI" ? "Mirai" : "University"}: ${t.status.replace("_", " ").toLowerCase()}`).join(" · ")}</span>}
+                <div className="surface flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-fg-muted">
+                    <span className="font-semibold text-fg">Overall status</span> <RiskBadge status={d.overall?.status ?? null} />
+                    {d.overall?.worstSubject && d.overall.status !== "COMPLETE" && <span>decided by the worst subject: <Link className="-my-2.5 inline-block py-2.5 font-semibold text-accent-text underline underline-offset-2 hover:text-fg" to={`/subjects/${d.overall.worstSubject.id}`}>{d.overall.worstSubject.name}</Link> ({d.overall.worstSubject.batchName})</span>}
+                  </div>
+                  {d.overall && d.overall.byTrack.length > 1 && (
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-fg-subtle">
+                      {d.overall.byTrack.map((t) => (
+                        <span key={t.track} className="rounded-full bg-surface-3 px-2 py-0.5 font-medium text-fg-2">
+                          {t.track === "MIRAI" ? "Mirai" : "University"}: {t.status.replace("_", " ").toLowerCase()}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
             ) : (
               <p className="flex items-center gap-2 text-sm text-fg-subtle"><ShieldAlert className="size-4 text-warn" aria-hidden /> No academic setup exists for this campus yet, so this page shows a built-in demonstration dataset, not a database.</p>

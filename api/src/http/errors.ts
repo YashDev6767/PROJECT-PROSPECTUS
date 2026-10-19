@@ -34,14 +34,26 @@ export function needDb(db: Database) {
   return db.prisma;
 }
 
-/** DEMO-ONLY authorization: reads `X-Demo-Role`. See domain/permissions.ts — this is not real security. */
+/** Who is calling, as established by the server: a verified session cookie, or (only when allowed) the spoofable demo headers. */
+export interface Identity { source: "session" | "demo"; role: DemoRole; facultyId: string | null; email: string | null }
+
+/**
+ * Authorization: the signed session wins; the demo `X-Demo-Role` / `X-Demo-Faculty` headers are honoured only when the operator allows
+ * them (default: development only, never production). Demo headers are NOT security — see domain/permissions.ts.
+ */
 export const requireCapability = (capability: Capability): RequestHandler => (req, res, next) => {
-  const role: DemoRole | null = roleFromHeader(req.header("x-demo-role"));
-  if (role === null) return next(new HttpError(401, "unauthenticated", "No demo role was supplied (X-Demo-Role header). Real authentication arrives in Phase 4."));
-  if (!can(role, capability)) return next(new HttpError(403, "forbidden", `The ${role.replace("_", " ")} role cannot perform this action (${capability}).`));
-  res.locals.role = role;
+  const identity = res.locals.identity as Identity | undefined;
+  if (!identity) {
+    if (req.app.locals.allowDemoHeaders === false) return next(new HttpError(401, "unauthenticated", "Demo authentication headers (X-Demo-Role) are disabled in production mode. Production deployment requires server-verified authentication — sign in."));
+    return next(new HttpError(401, "unauthenticated", "Not signed in: no valid session and no demo role was supplied (X-Demo-Role header)."));
+  }
+  if (!can(identity.role, capability)) return next(new HttpError(403, "forbidden", `The ${identity.role.replace("_", " ")} role cannot perform this action (${capability}).`));
+  res.locals.role = identity.role;
+  res.locals.facultyId = identity.facultyId;
   next();
 };
+/** The faculty member the caller acts as (verified for sessions; self-declared for demo headers). Call after requireCapability. */
+export const callerFaculty = (res: Response): string | null => (res.locals.facultyId as string | null | undefined) ?? null;
 export const callerRole = (res: Response): DemoRole | null => (res.locals.role as DemoRole | undefined) ?? null;
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {

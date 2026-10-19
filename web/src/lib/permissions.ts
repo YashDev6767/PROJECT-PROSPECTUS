@@ -1,7 +1,7 @@
 import type { Role } from "./roles";
 
 /** Mirrors api/src/domain/permissions.ts. UI hints only — the API makes the actual (demo) decision. */
-export type Capability = "semesters:write" | "academic:write" | "special_working_day:write" | "sessions:read" | "sessions:write" | "sessions:review";
+export type Capability = "semesters:write" | "academic:write" | "special_working_day:write" | "sessions:read" | "sessions:write" | "sessions:review" | "reports:read";
 const matrix: Record<Capability, Role[]> = {
   "semesters:write": ["admin"],
   "academic:write": ["admin", "campus_manager"],
@@ -9,5 +9,6 @@ const matrix: Record<Capability, Role[]> = {
   "sessions:read": ["admin", "campus_manager", "faculty"],
   "sessions:write": ["admin", "campus_manager", "faculty"],
   "sessions:review": ["admin", "campus_manager"],
+  "reports:read": ["admin", "campus_manager", "faculty"],
 };
 export const can = (role: Role, capability: Capability) => matrix[capability].includes(role);

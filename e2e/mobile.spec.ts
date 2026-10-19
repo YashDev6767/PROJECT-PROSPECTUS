@@ -27,3 +27,17 @@ test("mobile: a faculty member logs a cancelled class with a reason in one scree
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);
 });
+
+test("mobile: drawer navigation reaches Reports without horizontal overflow", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("prospectus.role", "admin");
+    localStorage.setItem("prospectus.campus", "hi-tech");
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("dialog", { name: "Navigation menu" }).getByRole("link", { name: "Reports" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Reports" })).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  expect(overflow).toBe(false);
+});
+

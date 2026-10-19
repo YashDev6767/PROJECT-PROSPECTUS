@@ -27,7 +27,7 @@ function SubjectRow({ s, exam }: { s: ExamReadinessSubject; exam: ExamReadinessE
       </td>
       <td className={`${tableClasses.td} tabular-nums`}>{unassessed ? "—" : h(s.remainingHours)}</td>
       <td className={`${tableClasses.td} tabular-nums`}>{unassessed ? "—" : h(s.availableHours)}</td>
-      <td className={`${tableClasses.td} tabular-nums`}>{s.bufferRatio === null ? "—" : s.bufferRatio.toFixed(2)}</td>
+      <td className={`${tableClasses.td} tabular-nums font-medium ${s.bufferRatio === null ? "text-fg-faint" : s.bufferRatio < 1.0 ? "font-semibold text-danger" : s.bufferRatio < 1.15 ? "font-semibold text-warn" : "text-ok"}`}>{s.bufferRatio === null ? "—" : s.bufferRatio.toFixed(2)}</td>
       <td className={`${tableClasses.td} text-xs text-fg-subtle`}>
         {s.scopeMode === "whole_syllabus" ? "Whole syllabus" : `${s.topicsInScope} topic(s) assessed by this exam`}
         {s.unscopedTopics > 0 && <span className="block text-warn">{s.unscopedTopics} topic(s) have no exam tag and are not counted</span>}
@@ -62,10 +62,17 @@ export function ExamReadiness() {
     <div className="space-y-8">
       <PageHeader title="Exam Readiness" subtitle={`${campusName(campusId)} · remaining syllabus against the teaching time left before each exam`}
         actions={<ButtonLink to="/exams">Exam schedule</ButtonLink>} />
-      <p className="max-w-3xl text-sm text-fg-muted">
-        Readiness compares the syllabus hours still to cover with the scheduled teaching hours left before the exam starts (holidays, exam weeks and cancelled classes respected).
-        It is a capacity check, not a prediction of marks, and it never invents a score.
-      </p>
+      <div className="surface flex flex-wrap items-center justify-between gap-4 p-4 text-xs text-fg-muted">
+        <p className="max-w-2xl text-sm leading-relaxed text-fg-muted">
+          Readiness compares the syllabus hours still to cover with the scheduled teaching hours left before the exam starts (holidays, exam weeks and cancelled classes respected). It is a capacity check, not a prediction of marks, and it never invents a score.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-fg-subtle">Buffer ratio:</span>
+          <Badge tone="good">≥ 1.15 Healthy</Badge>
+          <Badge tone="warn">1.00–1.14 Tight</Badge>
+          <Badge tone="danger">&lt; 1.00 Deficit</Badge>
+        </div>
+      </div>
       <Boundary res={res} lines={3}>{(d) => d.state === "no_active_semester" ? (
         <section role="status" className="flex items-start gap-3 rounded-card border border-warn/40 bg-warn-soft p-4 text-warn">
           <TriangleAlert className="mt-0.5 size-5 shrink-0" aria-hidden />
