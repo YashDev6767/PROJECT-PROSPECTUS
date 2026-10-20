@@ -17,7 +17,7 @@ const outcomes: Outcome[] = ["COMPLETED", "IN_PROGRESS", "SKIPPED", "MERGED", "C
 const teaches = (o: Outcome) => o === "COMPLETED" || o === "IN_PROGRESS" || o === "MERGED";
 
 const summaryLine = (b: SubjectSummary | null, a: SubjectSummary | null) =>
-  a ? `Coverage ${b?.coveragePct ?? 0}% → ${a.coveragePct ?? 0}%${a.bufferRatio !== null ? ` · buffer ${a.bufferRatio.toFixed(2)}` : ""}` : "Saved";
+  a ? `Coverage ${b?.coveragePct ?? 0}% → ${a.coveragePct ?? 0}%${a.bufferRatio !== null ? ` · cushion ${a.bufferRatio.toFixed(2)}` : ""}` : "Saved";
 
 export interface LogTarget { item: ScheduleItem }
 

@@ -12,11 +12,12 @@ re-verifies checksums, headers, usage in the app, and a per-file budget on how m
 | Originkit | Arrow Reveal Button | https://www.originkit.dev/components/arrow-reveal-button (React/Next.js source on the component page) | `originkit/arrow-reveal-button.tsx` | `LogSessionCta.tsx` → Overview header | 19 (onClick, visible label, soft shadow, no icon travel, strict typing) |
 | Magic UI | Dot Pattern | https://magicui.design/r/dot-pattern.json | `magicui/dot-pattern.tsx` | `layout/AppBackground.tsx` (all pages) | 0 (byte-identical) |
 | Aceternity UI | Spotlight | https://ui.aceternity.com/registry/spotlight.json | `aceternity/spotlight.tsx` | `layout/AppBackground.tsx` (all pages) | 2 (unused React import removed) |
+| React Bits | Beams (WebGL2 background) | https://reactbits.dev/backgrounds/beams (raw source: github.com/DavidHDev/react-bits, `src/content/Backgrounds/Beams/`) | `reactbits/Beams.jsx` + `Beams.css` (+ our `Beams.d.ts` types) | `pages/Login.tsx` (full-viewport background) | 1 (cleanup only releases the WebGL context when the canvas has left the DOM, so React StrictMode's re-run of effects works); CSS byte-identical. Licence: MIT + Commons Clause |
 
 ## Removed in the product-design pass
 Magic UI Number Ticker, Magic UI Blur Fade and React Bits SpotlightCard were removed from the app (and from `_originals/` and the provenance
 registry): count-up numbers, a pointer-following glow on the metric tiles and per-element blur-fades were decorative and cost frames while
-scrolling. React Bits is therefore no longer used anywhere; nothing here claims otherwise.
+scrolling. React Bits is used again for exactly one component: Beams on the login page (see the table). Nothing here claims otherwise.
 
 ## Honest notes
 - **Not used on purpose:** React Bits `FadeContent` (needs gsap + ScrollTrigger), Aceternity `Card Spotlight` (needs three.js / @react-three/fiber and a WebGL canvas), and the Originkit CLI (`npx originkit add …` needs an Originkit account — the source was taken from the public component page instead).

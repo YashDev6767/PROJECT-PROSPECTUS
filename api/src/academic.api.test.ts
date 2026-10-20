@@ -5,7 +5,7 @@ import { createApp } from "./app.js";
 import type { Database } from "./db/client.js";
 
 const noDb: Database = { prisma: null, check: async () => ({ state: "not_configured", detail: "x" }), close: async () => {} };
-const app = createApp({ CORS_ORIGIN: "http://localhost:5173" }, noDb, () => new Date("2026-10-16T08:00:00Z"));
+const app = createApp({ CORS_ORIGIN: "http://localhost:5173", DEMO_DEFAULT_CAMPUS: "*" }, noDb, () => new Date("2026-10-16T08:00:00Z"));
 const as = (role: string | null) => (t: request.Test) => (role ? t.set("X-Demo-Role", role) : t);
 
 const semester = { name: "Semester 3", academicYear: "2026-27", track: "MIRAI", campusId: "hi-tech", startsOn: "2026-08-03", endsOn: "2026-12-18" };
@@ -136,6 +136,9 @@ describe("configuration", () => {
     const { loadEnv } = await import("./config/env.js");
     expect(loadEnv({} as NodeJS.ProcessEnv)).toMatchObject({ APP_TIME_ZONE: "Asia/Kolkata", RISK_ON_TRACK_BUFFER: 1.15, RISK_TIGHT_BUFFER: 1, SYLLABUS_DEADLINE_EXAM_TYPE: "END_TERM" });
     expect(() => loadEnv({ RISK_ON_TRACK_BUFFER: "1.1", RISK_TIGHT_BUFFER: "1.2" } as unknown as NodeJS.ProcessEnv)).toThrow(/RISK_TIGHT_BUFFER/);
+    expect(loadEnv({} as NodeJS.ProcessEnv).DEMO_DEFAULT_CAMPUS).toBe("hi-tech"); // a single known campus by default
+    expect(loadEnv({ DEMO_DEFAULT_CAMPUS: "ratnam" } as unknown as NodeJS.ProcessEnv).DEMO_DEFAULT_CAMPUS).toBe("ratnam");
+    for (const bad of ["*", "nowhere", "", "hi-tech,ratnam"]) expect(() => loadEnv({ DEMO_DEFAULT_CAMPUS: bad } as unknown as NodeJS.ProcessEnv), bad).toThrow(/DEMO_DEFAULT_CAMPUS/);
     expect(() => loadEnv({ APP_TIME_ZONE: "Mars/Olympus" } as unknown as NodeJS.ProcessEnv)).toThrow(/time zone/);
     expect(loadEnv({ RISK_ON_TRACK_BUFFER: "1.3", RISK_TIGHT_BUFFER: "1.1" } as unknown as NodeJS.ProcessEnv)).toMatchObject({ RISK_ON_TRACK_BUFFER: 1.3, RISK_TIGHT_BUFFER: 1.1 });
   });

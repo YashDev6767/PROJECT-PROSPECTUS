@@ -8,8 +8,8 @@ import type { Settings } from "../services/settings.js";
 import { iso } from "../services/format.js";
 import { checkSlotConflicts, slotContextFor } from "../services/timetableData.js";
 import type { Deps } from "./deps.js";
-import type { PrismaClient } from "@prisma/client";
-import { campusWhere, hideOutOfScope, inScope, scopeOf } from "../http/scope.js";
+import type { Prisma, PrismaClient } from "@prisma/client";
+import { and, audienceOf, campusWhere, hideOutOfScope, inScope, scopeOf, subjectAudience } from "../http/scope.js";
 
 const include = { batch: { include: { semester: true } }, faculty: true, timetable: true, units: { include: { topics: { select: { plannedHours: true } } } } } as const;
 type SubjectRow = Awaited<ReturnType<typeof loadOne>>;
@@ -44,7 +44,7 @@ export function subjectsRouter({ db, settings, today }: Deps): Router {
     const q = parse(z.object({ campusId: campusId.optional(), track: track.optional(), semesterId: z.string().max(64).optional(), batchId: z.string().max(64).optional(), facultyId: z.string().max(64).optional() }), req.query);
     const prisma = needDb(db);
     const rows = await prisma.subject.findMany({
-      where: { batchId: q.batchId, facultyId: q.facultyId, batch: { semesterId: q.semesterId, semester: { campusId: campusWhere(res, q.campusId), track: q.track } } },
+      where: and<Prisma.SubjectWhereInput>({ batchId: q.batchId, facultyId: q.facultyId, batch: { semesterId: q.semesterId, semester: { campusId: campusWhere(res, q.campusId), track: q.track } } }, subjectAudience(audienceOf(res))),
       include, orderBy: [{ batch: { name: "asc" } }, { code: "asc" }],
     });
     res.json({ subjects: await serialize(prisma, rows, settings, today()) });
@@ -53,7 +53,7 @@ export function subjectsRouter({ db, settings, today }: Deps): Router {
   r.get("/subjects/export.csv", asyncHandler(async (req, res) => {
     const q = parse(z.object({ semesterId: z.string().max(64) }), req.query);
     const prisma = needDb(db);
-    const rows = await serialize(prisma, await prisma.subject.findMany({ where: { batch: { semesterId: q.semesterId, semester: { campusId: campusWhere(res) } } }, include, orderBy: [{ batch: { name: "asc" } }, { code: "asc" }] }), settings, today());
+    const rows = await serialize(prisma, await prisma.subject.findMany({ where: and<Prisma.SubjectWhereInput>({ batch: { semesterId: q.semesterId, semester: { campusId: campusWhere(res) } } }, subjectAudience(audienceOf(res))), include, orderBy: [{ batch: { name: "asc" } }, { code: "asc" }] }), settings, today());
     res.type("text/csv").attachment("subjects.csv").send(toCsv(
       ["code", "name", "batch", "faculty", "planned_hours", "weekly_scheduled_hours", "projected_semester_hours", "syllabus_hours", "sample_data"],
       rows.map((s) => [s.code, s.name, s.batchName, s.facultyName, s.plannedHours, s.weeklyScheduledHours, s.projectedSemesterHours, s.syllabusPlannedHours, s.isSample ? "yes" : "no"]),

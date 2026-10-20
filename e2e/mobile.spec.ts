@@ -4,7 +4,7 @@ import { asFaculty, ensureE2EData } from "./helpers";
 test.skip(!process.env.TEST_DATABASE_URL, "needs TEST_DATABASE_URL");
 
 test("mobile: drawer navigation reaches academic setup pages", async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("prospectus.role", "faculty"));
+  await page.addInitScript(() => localStorage.setItem("prospectus.role", "campus_manager"));
   await page.goto("/");
   await page.getByRole("button", { name: "Open menu" }).click();
   await page.getByRole("dialog", { name: "Navigation menu" }).getByRole("link", { name: "Timetable" }).click();

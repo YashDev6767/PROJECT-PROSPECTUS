@@ -155,6 +155,8 @@ export const SampleBadge = () => <span title="Demonstration data — not real MS
 export const tableClasses = {
   wrap: "surface overflow-x-auto",
   table: "w-full min-w-[40rem] text-left text-sm [&_tbody_tr]:transition-colors [&_tbody_tr]:duration-[var(--dur-fast)] [&_tbody_tr:hover]:bg-surface-2 [&_tbody_tr:last-child_td]:border-b-0",
+  /** Same as `table`, but on phones it shrinks to the screen (the page hides secondary columns there) instead of scrolling sideways. */
+  tableFit: "w-full text-left text-sm md:min-w-[40rem] [&_tbody_tr]:transition-colors [&_tbody_tr]:duration-[var(--dur-fast)] [&_tbody_tr:hover]:bg-surface-2 [&_tbody_tr:last-child_td]:border-b-0",
   th: "whitespace-nowrap border-b border-line px-3.5 py-2.5 text-xs font-medium text-fg-subtle",
   td: "border-b border-line/60 px-3.5 py-2.5 align-middle text-fg-2",
 };

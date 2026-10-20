@@ -15,7 +15,10 @@ export const setApiSession = (active: boolean) => { sessionActive = active; };
 // DEMO ONLY (development): which batch a previewing "student" looks at. A signed-in student's batch comes from the server, never from here.
 let demoBatch: string | null = null;
 export const setApiBatch = (id: string | null) => { demoBatch = id; };
-const identityHeaders = (): Record<string, string> => sessionActive ? {} : ({ ...(demoRole ? { "X-Demo-Role": demoRole } : {}), ...(demoFaculty ? { "X-Demo-Faculty": demoFaculty } : {}), ...(demoRole === "student" && demoBatch ? { "X-Demo-Batch": demoBatch } : {}) });
+// DEMO ONLY: the campus being previewed (X-Demo-Campus). Without it the server uses its single configured default campus, never "all campuses".
+let demoCampus: string | null = null;
+export const setApiCampus = (id: string | null) => { demoCampus = id; };
+const identityHeaders = (): Record<string, string> => sessionActive ? {} : ({ ...(demoCampus ? { "X-Demo-Campus": demoCampus } : {}), ...(demoRole ? { "X-Demo-Role": demoRole } : {}), ...(demoFaculty ? { "X-Demo-Faculty": demoFaculty } : {}), ...(demoRole === "student" && demoBatch ? { "X-Demo-Batch": demoBatch } : {}) });
 
 export interface ApiIssue { path: string; message: string }
 export interface ApiWarning { code: string; message: string }

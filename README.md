@@ -188,6 +188,7 @@ Three layers, from least to most trustworthy:
   - `NODE_ENV`: Set to `production`.
   - `CORS_ORIGIN`: Set to the production domain(s) (e.g., `https://prospectus.msot.edu.in`).
   - `APP_TIME_ZONE`: Defaults to `Asia/Kolkata`.
+  - `DEMO_DEFAULT_CAMPUS`: the single campus an unsigned development preview sees by default (default: the first campus). Demo previews never get all campuses unless a test sends `X-Demo-Campus: *`.
   - `ALLOW_DEMO_HEADERS`: Leave unset or `false` outside local development; `true` only for a password-gated internal network.
   - `AUTH_USERS`, `SESSION_SECRET` (32+ chars), optional `SESSION_TTL_HOURS`: the restricted sign-in (see above). `VITE_API_BASE_URL` is only needed if the web build is served from a different origin than the API (then also add that origin to `CORS_ORIGIN`; cookies are sent with credentials).
 - **Reverse Proxy:** Configure Nginx or Caddy with HTTPS/TLS termination, HSTS, and rate limiting.

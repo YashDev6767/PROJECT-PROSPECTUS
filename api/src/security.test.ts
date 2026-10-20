@@ -148,9 +148,11 @@ describe("Security Audit: Production Environment Protection", () => {
     expect(res.body.error).toBe("database_unavailable");
   });
 
-  it("in production only health and metadata are anonymous; academic data and every CSV export need a session", async () => {
-    expect((await request(prodApp).get("/api/health")).status).toBe(200);
-    expect((await request(prodApp).get("/api/meta")).status).toBe(200);
+  it("in production only liveness is anonymous; metadata, academic data and every CSV export need a session", async () => {
+    const health = await request(prodApp).get("/api/health");
+    expect(health.status).toBe(200);
+    expect(health.body).toEqual({ status: "degraded", service: "prospectus-api" }); // no database detail, uptime or version for anonymous callers
+    expect((await request(prodApp).get("/api/meta")).status).toBe(401);
     for (const path of [
       "/api/dashboard?campusId=hi-tech", "/api/semesters?campusId=hi-tech", "/api/faculty?campusId=hi-tech", "/api/batches?campusId=hi-tech", "/api/subjects?campusId=hi-tech",
       "/api/subjects/export.csv?semesterId=x", "/api/timetable?semesterId=x", "/api/timetable/export.csv?semesterId=x", "/api/exams?semesterId=x", "/api/exams/export.csv?semesterId=x",

@@ -37,6 +37,26 @@ describe("access: login page and gate", () => {
     expect(screen.queryByLabelText("Preview as role")).not.toBeInTheDocument();
     expect(screen.queryByText(/continue with the role preview/)).not.toBeInTheDocument(); // no demo bypass offered
   });
+  it("production-style server: the root URL itself redirects an anonymous visitor to /login", async () => {
+    server({ sessionLogin: true, demoHeaders: false });
+    renderAt("/");
+    expect(await screen.findByRole("heading", { level: 1, name: "Welcome back" })).toBeInTheDocument();
+  });
+  it("development server keeps the role preview at the root URL", async () => {
+    server({ sessionLogin: true, demoHeaders: true });
+    renderAt("/");
+    expect(await screen.findByLabelText("Preview as role")).toBeInTheDocument();
+  });
+  it("the Beams background is a hidden, non-interactive layer behind the form, and a browser without WebGL2 still gets a usable form", async () => {
+    server({ sessionLogin: true, demoHeaders: false });
+    renderAt("/login");
+    const layer = await screen.findByTestId("login-beams");
+    expect(layer).toHaveAttribute("aria-hidden", "true");
+    expect(layer.className).toContain("pointer-events-none");
+    expect(layer.querySelector("canvas")).not.toBeNull();
+    expect(screen.getByLabelText("Email")).toBeEnabled(); // jsdom has no WebGL2 (getContext() returns null): the component draws nothing, the form is untouched
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+  });
   it("validates before sending anything, shows field errors, and toggles password visibility", async () => {
     const calls = server({ sessionLogin: true, demoHeaders: false });
     renderAt("/login");

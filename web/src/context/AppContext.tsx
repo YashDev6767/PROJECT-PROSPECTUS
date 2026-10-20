@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ApiError, fetchAuthConfig, fetchDashboard, fetchSession, setApiBatch, setApiFaculty, setApiRole, setApiSession, signInRequest, signOutRequest, type AuthConfig, type SessionUser } from "../lib/api";
+import { ApiError, fetchAuthConfig, fetchDashboard, fetchSession, setApiBatch, setApiCampus, setApiFaculty, setApiRole, setApiSession, signInRequest, signOutRequest, type AuthConfig, type SessionUser } from "../lib/api";
 import { can as canDo, type Capability } from "../lib/permissions";
 import { roles, type Role } from "../lib/roles";
 import type { Campus, Dashboard } from "../lib/types";
@@ -40,7 +40,7 @@ const safeSet = (key: string, value: string) => { try { localStorage.setItem(key
 export function AppProvider({ children }: { children: ReactNode }) {
   const [pickedRole, setRoleState] = useState<Role>(() => {
     const stored = safeGet("prospectus.role");
-    return roles.find((r) => r === stored) ?? "faculty";
+    return roles.find((r) => r === stored) ?? "campus_manager"; // a faculty preview with no chosen identity sees nothing, so the first view is the one-campus manager
   });
   const [auth, setAuth] = useState<AuthState>({ status: "loading", sessionLogin: false, demoHeaders: true, user: null });
   const user = auth.user;
@@ -55,6 +55,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const facultyId = user ? user.facultyId : pickedFaculty;
   setApiSession(user !== null);
   setApiRole(role);
+  setApiCampus(campusId);
   setApiBatch(!user && role === "student" ? pickedBatch : null);
   setApiFaculty(role === "faculty" ? facultyId : null); // before any child effect fetches, so requests carry the current demo role
 

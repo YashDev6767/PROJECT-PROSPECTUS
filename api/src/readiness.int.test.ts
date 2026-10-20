@@ -33,7 +33,7 @@ suite("timetable guard, dashboard states and exam readiness (PostgreSQL)", () =>
     execSync("npx prisma migrate deploy", { cwd: fileURLToPath(new URL("..", import.meta.url)), env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" });
     db = createDatabase(url);
     await db.prisma!.$executeRawUnsafe(`TRUNCATE "SessionTopicEntry","SessionLogRevision","SessionLog","Exam","CalendarEntry","TimetableEntry","SyllabusTopic","SyllabusUnit","Subject","Batch","Faculty","Semester" RESTART IDENTITY CASCADE`);
-    app = createApp({ CORS_ORIGIN: "http://localhost:5173" }, db, () => clock);
+    app = createApp({ CORS_ORIGIN: "http://localhost:5173", DEMO_DEFAULT_CAMPUS: "*" }, db, () => clock);
 
     ids.sem = (await post("/api/semesters", { name: "Sem X", academicYear: "2026-27", track: "MIRAI", campusId: "rgib", startsOn: "2026-09-07", endsOn: "2026-12-18", saturdayRule: "NONE" }, admin)).id;
     await admin(request(app).post(`/api/semesters/${ids.sem}/activate`)).send({});

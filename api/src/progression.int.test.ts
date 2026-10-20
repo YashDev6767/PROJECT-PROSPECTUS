@@ -32,7 +32,7 @@ suite("session logging and progression (PostgreSQL)", () => {
     execSync("npx prisma migrate deploy", { cwd: fileURLToPath(new URL("..", import.meta.url)), env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" });
     db = createDatabase(url);
     await db.prisma!.$executeRawUnsafe(`TRUNCATE "SessionTopicEntry","SessionLogRevision","SessionLog","Exam","CalendarEntry","TimetableEntry","SyllabusTopic","SyllabusUnit","Subject","Batch","Faculty","Semester" RESTART IDENTITY CASCADE`);
-    app = createApp({ CORS_ORIGIN: "http://localhost:5173" }, db, () => clock);
+    app = createApp({ CORS_ORIGIN: "http://localhost:5173", DEMO_DEFAULT_CAMPUS: "*" }, db, () => clock);
 
     const sem = await admin(request(app).post("/api/semesters")).send({ name: "Sem X", academicYear: "2026-27", track: "MIRAI", campusId: "rgib", startsOn: "2026-09-07", endsOn: "2026-12-18", saturdayRule: "NONE" });
     ids.sem = sem.body.id;
@@ -170,7 +170,7 @@ suite("session logging and progression (PostgreSQL)", () => {
       expect(other.body.error).toBe("not_your_subject");
       expect((await request(app).post("/api/session-logs").set("X-Demo-Role", "student").send(body())).status).toBe(403);
       expect((await request(app).post("/api/session-logs").send(body())).status).toBe(401);
-      expect((await faculty(ids.f2)(request(app).patch(`/api/session-logs/${ids.logSep16}`)).send({ correctionNote: "sneaky", notes: "x" })).status).toBe(403);
+      expect((await faculty(ids.f2)(request(app).patch(`/api/session-logs/${ids.logSep16}`)).send({ correctionNote: "sneaky", notes: "x" })).status).toBe(404); // colleague's log looks nonexistent
     });
     it("faculty only see their own logs; students see none; only managers can review", async () => {
       expect((await faculty(ids.f1)(request(app).get("/api/session-logs"))).body.logs).toHaveLength(4);

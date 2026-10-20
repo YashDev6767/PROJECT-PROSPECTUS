@@ -17,6 +17,7 @@ const vendored: Record<string, { path: string; importedAs: string; maxChangedLin
   "aceternity-stateful-button.tsx.orig.txt": { path: "aceternity/stateful-button.tsx", importedAs: "vendor/aceternity/stateful-button", maxChangedLines: 40 },
   "magicui-dot-pattern.tsx.orig.txt": { path: "magicui/dot-pattern.tsx", importedAs: "vendor/magicui/dot-pattern", maxChangedLines: 0 },
   "aceternity-spotlight.tsx.orig.txt": { path: "aceternity/spotlight.tsx", importedAs: "vendor/aceternity/spotlight", maxChangedLines: 2 },
+  "reactbits-beams.jsx.orig.txt": { path: "reactbits/Beams.jsx", importedAs: "vendor/reactbits/Beams", maxChangedLines: 2 },
   "originkit-arrow-reveal-button.tsx.orig.txt": { path: "originkit/arrow-reveal-button.tsx", importedAs: "vendor/originkit/arrow-reveal-button", maxChangedLines: 20 },
 };
 
@@ -27,7 +28,7 @@ const sources = (dir: string): string[] => readdirSync(dir).flatMap((f) => {
 const appCode = sources(resolve(process.cwd(), "src")).map((p) => readFileSync(p, "utf8")).join("\n");
 
 describe("vendored third-party components", () => {
-  it("covers the libraries still in use", () => expect(new Set(manifest.map((m) => m.library))).toEqual(new Set(["Magic UI", "Aceternity UI", "Originkit"])));
+  it("covers the libraries still in use", () => expect(new Set(manifest.map((m) => m.library))).toEqual(new Set(["Magic UI", "Aceternity UI", "Originkit", "React Bits"])));
 
   it.each(manifest)("$library · $component: pristine original matches its recorded checksum", (m) => {
     const content = readFileSync(join(vendor, "_originals", m.file));
@@ -59,8 +60,13 @@ describe("vendored third-party components", () => {
     expect(appCode).toContain(vendored[m.file]!.importedAs);
   });
 
-  it.each([["magicui/animated-theme-toggler.tsx", "magicui-animated-theme-toggler"], ["magicui/dot-pattern.tsx", "magicui-dot-pattern"]])("%s is byte-identical to the official source", (file, original) => {
+  it.each([["magicui/animated-theme-toggler.tsx", "magicui-animated-theme-toggler.tsx"], ["magicui/dot-pattern.tsx", "magicui-dot-pattern.tsx"]])("%s is byte-identical to the official source", (file, original) => {
     const body = readFileSync(join(vendor, file), "utf8");
-    expect(body.slice(body.indexOf("*/") + 3)).toBe(readFileSync(join(vendor, `_originals/${original}.tsx.orig.txt`), "utf8"));
+    expect(body.slice(body.indexOf("*/") + 3)).toBe(readFileSync(join(vendor, `_originals/${original}.orig.txt`), "utf8"));
+  });
+
+  it("React Bits Beams stylesheet is byte-identical to the official one", () => {
+    expect(readFileSync(join(vendor, "reactbits/Beams.css"), "utf8")).toBe(readFileSync(join(vendor, "_originals/reactbits-beams.css.orig.txt"), "utf8"));
+    expect(createHash("sha256").update(readFileSync(join(vendor, "reactbits/Beams.css"))).digest("hex")).toBe("7dc56f881d28b2970f0e61edae7283d01189b8fc430415d913c0ed5dd95c88be");
   });
 });

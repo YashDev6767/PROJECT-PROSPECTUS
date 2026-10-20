@@ -4,7 +4,7 @@ import { asyncHandler, failOnIssues, HttpError, needDb, needsConfirmation, notFo
 import { csvBody, syllabusBody } from "../http/schemas.js";
 import { loadSyllabus, matchExistingIds, saveSyllabus } from "../services/syllabusData.js";
 import type { Deps } from "./deps.js";
-import { hideOutOfScope } from "../http/scope.js";
+import { hideOutOfScope, hideUnlessAudience } from "../http/scope.js";
 
 export function syllabusRouter({ db }: Deps): Router {
   const r = Router();
@@ -13,6 +13,7 @@ export function syllabusRouter({ db }: Deps): Router {
     const s = await prisma.subject.findUnique({ where: { id }, include: { batch: { include: { semester: true } } } });
     if (!s) throw notFound("Subject");
     hideOutOfScope(res, s.batch.semester.campusId, "Subject"); // every syllabus route (read, write, import, export) goes through here
+    hideUnlessAudience(res, s, "Subject"); // faculty: assigned subjects only; students: their batch only
     return s;
   }
   const payload = async (prisma: NonNullable<Deps["db"]["prisma"]>, s: { id: string; code: string; name: string; plannedHours: number | null; isSample: boolean; batch: { name: string } }) => {
@@ -25,7 +26,7 @@ export function syllabusRouter({ db }: Deps): Router {
     res.json(await payload(prisma, await subjectOr404(res, prisma, req.params.id!)));
   }));
 
-  r.put("/subjects/:id/syllabus", requireCapability("academic:write"), asyncHandler(async (req, res) => {
+  r.put("/subjects/:id/syllabus", requireCapability("syllabus:write"), asyncHandler(async (req, res) => {
     const b = parse(syllabusBody, req.body);
     failOnIssues(validateSyllabus(b.units).map((i) => ({ path: `${i.field}`, message: i.message })));
     const prisma = needDb(db);
@@ -41,7 +42,7 @@ export function syllabusRouter({ db }: Deps): Router {
   }));
 
   // Preview never writes. Row-level errors are returned for every bad row.
-  r.post("/subjects/:id/syllabus/import/preview", requireCapability("academic:write"), asyncHandler(async (req, res) => {
+  r.post("/subjects/:id/syllabus/import/preview", requireCapability("syllabus:write"), asyncHandler(async (req, res) => {
     const b = parse(csvBody, req.body);
     const prisma = needDb(db);
     const s = await subjectOr404(res, prisma, req.params.id!);
@@ -50,7 +51,7 @@ export function syllabusRouter({ db }: Deps): Router {
     res.json({ valid: result.errors.length === 0, rowCount: result.rowCount, errors: result.errors, units: result.units, totalPlannedHours: totalPlannedHours(result.units), existingTopicCount: existing });
   }));
 
-  r.post("/subjects/:id/syllabus/import", requireCapability("academic:write"), asyncHandler(async (req, res) => {
+  r.post("/subjects/:id/syllabus/import", requireCapability("syllabus:write"), asyncHandler(async (req, res) => {
     const b = parse(csvBody, req.body);
     const prisma = needDb(db);
     const s = await subjectOr404(res, prisma, req.params.id!);

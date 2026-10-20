@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import { campuses } from "../data/campuses.js";
 
 // The single .env lives at the repository root (works from src/ and from dist/).
 dotenv.config({ path: resolve(fileURLToPath(import.meta.url), "../../../../.env"), quiet: true });
@@ -31,6 +32,8 @@ const schema = z.object({
   // Security: client-controlled demo headers (X-Demo-Role) are disabled in production by default.
   // NOTE: never z.coerce.boolean() here — it turns the string "false" into true, which would ENABLE the spoofable headers.
   ALLOW_DEMO_HEADERS: envBoolean.optional(),
+  // Development demo previews are scoped to ONE campus: the one named in X-Demo-Campus, otherwise this default (never "all campuses").
+  DEMO_DEFAULT_CAMPUS: z.string().default(campuses[0]!.id).refine((c) => campuses.some((k) => k.id === c), "DEMO_DEFAULT_CAMPUS must be a known campus id"),
   // Restricted evaluation sign-in (server-verified). Both unset = no login; see api/src/services/auth.ts and the README.
   AUTH_USERS: z.string().optional(),
   SESSION_SECRET: z.string().optional(),

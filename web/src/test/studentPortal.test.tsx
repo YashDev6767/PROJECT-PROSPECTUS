@@ -67,7 +67,7 @@ describe("student portal (signed-in student)", () => {
     const exams = screen.getByRole("region", { name: "Upcoming exams" });
     expect(within(exams).getByText("Mid-term", { selector: "h3" })).toBeInTheDocument();
     expect(within(exams).getByText(/In 6 days/)).toBeInTheDocument();
-    expect(within(exams).getByText(/These topics are assessed in this exam/)).toBeInTheDocument();
+    expect(within(exams).queryByText(/These topics are assessed in this exam/)).toBeNull(); // the Topics list says it; the line was repeated under every subject
     await userEvent.click(within(exams).getByRole("button", { name: "Topics (2)" }));
     expect(within(exams).getByText(/Loops/)).toBeInTheDocument();
     // the request carries no batch choice and no spoofable headers; no staff-only jargon is shown

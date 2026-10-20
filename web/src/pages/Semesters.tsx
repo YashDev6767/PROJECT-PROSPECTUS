@@ -79,19 +79,19 @@ export function Semesters() {
         <Card><EmptyState icon={CalendarRange} title="No semesters yet">{writable ? "Create the first semester for this campus to start setting up batches, subjects and timetables." : "An admin needs to create the first semester for this campus."}</EmptyState></Card>
       ) : (
         <div className={tableClasses.wrap}>
-          <table className={tableClasses.table}>
-            <thead><tr>{["Semester", "Track", "Dates", "Saturdays", "Status", ...(writable ? ["Actions"] : [])].map((h) => <th key={h} scope="col" className={tableClasses.th}>{h}</th>)}</tr></thead>
+          <table className={tableClasses.tableFit}>
+            <thead><tr>{["Semester", "Track", "Dates", "Saturdays", "Status", ...(writable ? ["Actions"] : [])].map((h) => <th key={h} scope="col" className={`${tableClasses.th}${["Track", "Dates", "Saturdays", "Status"].includes(h) ? " hidden md:table-cell" : ""}`}>{h}</th>)}</tr></thead>
             <tbody>{semesters.map((s) => (
               <tr key={s.id}>
-                <td className={tableClasses.td}><p className="flex items-center gap-2 font-semibold text-fg">{s.name} {s.isSample && <SampleBadge />}</p><p className="text-xs text-fg-subtle">{s.academicYear} · {s.batchCount} batch(es) · {s.examCount} exam(s)</p></td>
-                <td className={tableClasses.td}>{trackLabels[s.track]}</td>
-                <td className={`${tableClasses.td} whitespace-nowrap`}>{shortDate(s.startsOn)} – {shortDate(s.endsOn)}</td>
-                <td className={tableClasses.td}>{ruleShort[s.saturdayRule]}</td>
-                <td className={tableClasses.td}>
+                <td className={tableClasses.td}><p className="flex items-center gap-2 font-semibold text-fg">{s.name} {s.isSample && <SampleBadge />}</p><p className="text-xs text-fg-subtle">{s.academicYear} · {s.batchCount} {s.batchCount === 1 ? "batch" : "batches"} · {s.examCount} {s.examCount === 1 ? "exam" : "exams"}</p><p className="text-xs text-fg-subtle md:hidden">{trackLabels[s.track]} · {shortDate(s.startsOn)} – {shortDate(s.endsOn)}</p><div className="mt-1.5 md:hidden"><div className="flex flex-wrap gap-1.5" aria-hidden><Badge tone={statusTone[s.status]}>{statusLabels[s.status]}</Badge>{s.isActive && s.status !== "active" && s.status !== "completed" && <Badge tone="warn">Activated · not started</Badge>}{!s.isActive && s.status === "upcoming" && <Badge>Not activated</Badge>}</div></div></td>
+                <td className={`${tableClasses.td} hidden md:table-cell`}>{trackLabels[s.track]}</td>
+                <td className={`${tableClasses.td} hidden whitespace-nowrap md:table-cell`}>{shortDate(s.startsOn)} – {shortDate(s.endsOn)}</td>
+                <td className={`${tableClasses.td} hidden md:table-cell`}>{ruleShort[s.saturdayRule]}</td>
+                <td className={`${tableClasses.td} hidden md:table-cell`}>
                   <div className="flex flex-wrap gap-1.5"><Badge tone={statusTone[s.status]}>{statusLabels[s.status]}</Badge>{s.isActive && s.status !== "active" && s.status !== "completed" && <Badge tone="warn">Activated · not started</Badge>}{!s.isActive && s.status === "upcoming" && <Badge>Not activated</Badge>}</div>
                 </td>
                 {writable && <td className={tableClasses.td}>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-col items-start gap-1.5 md:flex-row md:flex-wrap">
                     <Button className="min-h-11 px-3 lg:min-h-9" onClick={() => setEditing(s)} aria-label={`Edit ${s.name} ${trackLabels[s.track]}`}><Pencil className="size-4" aria-hidden /> Edit</Button>
                     {s.isActive
                       ? <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9" aria-label={`Deactivate ${s.name}`} onClick={async () => { await api.post(`/api/semesters/${s.id}/deactivate`); toast(`${s.name} deactivated`); res.reload(); }}><Power className="size-4" aria-hidden /> Deactivate</Button>

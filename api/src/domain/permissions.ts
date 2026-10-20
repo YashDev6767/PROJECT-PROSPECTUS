@@ -4,11 +4,12 @@
  * boundaries and error handling in place so real auth can replace `roleFromHeader` without touching routes.
  */
 export type DemoRole = "admin" | "campus_manager" | "faculty" | "student";
-export type Capability = "semesters:write" | "academic:write" | "special_working_day:write" | "sessions:read" | "sessions:write" | "sessions:review" | "reports:read" | "portal:read";
+export type Capability = "semesters:write" | "academic:write" | "syllabus:write" | "special_working_day:write" | "sessions:read" | "sessions:write" | "sessions:review" | "reports:read" | "portal:read";
 
 const matrix: Record<Capability, DemoRole[]> = {
   "semesters:write": ["admin"],
   "academic:write": ["admin", "campus_manager"],
+  "syllabus:write": ["admin", "campus_manager", "faculty"],
   "special_working_day:write": ["admin", "campus_manager"],
   // Session logs: faculty may log/correct only for subjects assigned to the faculty member they are acting as (checked in the route).
   "sessions:read": ["admin", "campus_manager", "faculty"],

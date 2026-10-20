@@ -94,7 +94,7 @@ describe("Subject progress page", () => {
     expect(within(why).getByText(/On track ≥ 1.15 · Tight ≥ 1.00/)).toBeInTheDocument();
     const nums = within(screen.getByRole("list", { name: "Progress numbers" }));
     expect(nums.getByText("Planned hours in scope").nextElementSibling).toHaveTextContent("16 h");
-    expect(nums.getByText("Buffer ratio").nextElementSibling).toHaveTextContent("0.89");
+    expect(nums.getByText("Time cushion").nextElementSibling).toHaveTextContent("0.89");
     expect(nums.getByText("Pace vs plan").nextElementSibling).toHaveTextContent("-8.00 h");
     expect(nums.getByText("Projected completion").nextElementSibling).toHaveTextContent("11 Nov");
     expect(screen.getByText("Overdue topics (1)")).toBeInTheDocument();
@@ -166,7 +166,7 @@ describe("Session Logs page", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     const post = calls.find((c) => c.method === "POST" && c.path === "/api/session-logs")!;
     expect(post.body).toMatchObject({ subjectId: "sub1", heldOn: "2026-10-05", timetableEntryId: "e1", outcome: "COMPLETED", covered: [{ topicId: "t2", completionPct: 100 }], makeupOfId: null });
-    expect(await screen.findByText(/Session logged — Coverage 12.5% → 18.8% · buffer 0.95/)).toBeInTheDocument();
+    expect(await screen.findByText(/Session logged — Coverage 12.5% → 18.8% · cushion 0.95/)).toBeInTheDocument();
   });
 
   it("records a partly covered topic with its percentage", async () => {
@@ -280,7 +280,7 @@ describe("Subjects list shows progress status", () => {
     const link = await screen.findByRole("link", { name: /Progress details for Database Concepts, Mirai Batch A/ });
     expect(link).toHaveAttribute("href", "/subjects/sub1");
     expect(link).toHaveTextContent("Tight");
-    expect(link).toHaveTextContent("62% · buffer 1.02");
+    expect(link).toHaveTextContent("62% · cushion 1.02");
   });
 });
 

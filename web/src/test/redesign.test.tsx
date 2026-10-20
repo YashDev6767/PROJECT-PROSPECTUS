@@ -62,7 +62,7 @@ describe("SubjectRiskCard", () => {
     expect(within(metrics).getByText("44.42%")).toBeInTheDocument();
     expect(within(metrics).getByText("83.3%")).toBeInTheDocument();
     expect(within(metrics).getByText("14 h")).toBeInTheDocument();
-    expect(within(metrics).getByText("Buffer ratio").nextElementSibling).toHaveTextContent("0.55");
+    expect(within(metrics).getByText("Time cushion").nextElementSibling).toHaveTextContent("0.55");
     expect(within(card).getByText("11 h of teaching remain for 20.01 h of syllabus, before 7 Dec.")).toBeInTheDocument();
   });
 

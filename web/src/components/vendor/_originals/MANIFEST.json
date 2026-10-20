@@ -53,5 +53,16 @@
     "docs": "https://ui.aceternity.com/components/spotlight",
     "source": "https://ui.aceternity.com/registry/spotlight.json",
     "license": "Aceternity License (https://ui.aceternity.com/licence): unlimited end products incl. modification; re-distributing the item's source files or building templates from it is prohibited"
+  },
+  {
+    "file": "reactbits-beams.jsx.orig.txt",
+    "sha256": "2079eb95b1e020bced1f287371dc45b3c84062b21d625de1bc80753010f21759",
+    "bytes": 21309,
+    "retrievedAt": "2026-10-20",
+    "library": "React Bits",
+    "component": "Beams (WebGL2 background)",
+    "docs": "https://reactbits.dev/backgrounds/beams",
+    "source": "https://raw.githubusercontent.com/DavidHDev/react-bits/main/src/content/Backgrounds/Beams/Beams.jsx",
+    "license": "MIT + Commons Clause (https://github.com/DavidHDev/react-bits/blob/main/LICENSE.md)"
   }
 ]

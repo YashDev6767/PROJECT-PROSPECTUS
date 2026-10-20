@@ -21,16 +21,16 @@
   --fg-2: #222640;
   --fg-muted: #474c69;
   --fg-subtle: #596080;
-  --fg-faint: #6b7192;
-  /* brand accent: electric indigo */
-  --accent: #4f46e5;
-  --accent-solid: #4f46e5;
-  --accent-solid-hover: #4338ca;
-  --accent-solid-active: #3730a3;
-  --accent-text: #4338ca;
-  --accent-soft: #eef0ff;
-  --accent-muted: #e0e4ff;
-  --accent-soft-fg: #3730a3;
+  --fg-faint: #5f6685;
+  /* brand accent: restrained blue (academic SaaS) */
+  --accent: #2563eb;
+  --accent-solid: #1d4ed8;
+  --accent-solid-hover: #1e40af;
+  --accent-solid-active: #172554;
+  --accent-text: #1d4ed8;
+  --accent-soft: #f0f4ff;
+  --accent-muted: #e0eafd;
+  --accent-soft-fg: #1e40af;
   --on-accent: #ffffff;
   /* status (independent of the accent) */
   --ok: #17663a; --ok-soft: #e5f6ec; --ok-solid: #15803d;
@@ -38,23 +38,23 @@
   --danger: #b42318; --danger-soft: #fdeeec; --danger-solid: #b42318; --danger-solid-hover: #912018;
   --info: #0c5f75; --info-soft: #e1f4f9;
   /* charts (validated against --surface) */
-  --chart-1: #4f46e5; --chart-2: #0e7490; --chart-3: #b45309; --chart-4: #7c3aed; --chart-5: #596080;
+  --chart-1: #2563eb; --chart-2: #0e7490; --chart-3: #b45309; --chart-4: #0284c7; --chart-5: #475569;
   /* depth */
-  --sh-soft: 0 1px 2px rgb(30 27 75 / 0.04);
-  --sh-glass: 0 1px 2px rgb(30 27 75 / 0.04);
-  --sh-pop: 0 12px 32px -12px rgb(30 27 75 / 0.28), 0 1px 3px rgb(30 27 75 / 0.08);
+  --sh-soft: 0 1px 2px rgb(15 23 42 / 0.04);
+  --sh-glass: 0 1px 2px rgb(15 23 42 / 0.04);
+  --sh-pop: 0 12px 32px -12px rgb(15 23 42 / 0.22), 0 1px 3px rgb(15 23 42 / 0.06);
   --glow: 0 0 0 0 transparent;
-  --glass-bg: rgb(255 255 255 / 0.82);
+  --glass-bg: rgb(255 255 255 / 0.88);
   --glass-border: var(--line);
-  --scrim: rgb(14 17 36 / 0.42);
-  --spot: rgb(99 102 241 / 0.12);
+  --scrim: rgb(15 23 42 / 0.42);
+  --spot: rgb(37 99 235 / 0.08);
   /* atmosphere */
-  --bg-glow-1: rgb(99 102 241 / 0.32);
-  --bg-glow-2: rgb(168 85 247 / 0.22);
-  --bg-glow-3: rgb(56 189 248 / 0.26);
-  --bg-sheen: rgb(255 255 255 / 0.55);
-  --bg-dots: rgb(79 70 229 / 0.34);
-  --surface-alpha: 80%;
+  --bg-glow-1: rgb(37 99 235 / 0.12);
+  --bg-glow-2: rgb(59 130 246 / 0.08);
+  --bg-glow-3: rgb(56 189 248 / 0.10);
+  --bg-sheen: rgb(255 255 255 / 0.6);
+  --bg-dots: transparent;
+  --surface-alpha: 84%;
 }
 
 .dark {
@@ -70,34 +70,34 @@
   --fg-muted: #a7acca;
   --fg-subtle: #979cbd;
   --fg-faint: #8389ab;
-  --accent: #818cf8;
-  --accent-solid: #5850ec;
-  --accent-solid-hover: #6159f1;
-  --accent-solid-active: #4b43dc;
-  --accent-text: #a5b4fc;
-  --accent-soft: #1b1e45;
-  --accent-muted: #272b5c;
-  --accent-soft-fg: #c7d2fe;
+  --accent: #60a5fa;
+  --accent-solid: #2563eb;
+  --accent-solid-hover: #3b82f6;
+  --accent-solid-active: #1d4ed8;
+  --accent-text: #93c5fd;
+  --accent-soft: #172554;
+  --accent-muted: #1e3a8a;
+  --accent-soft-fg: #bfdbfe;
   --on-accent: #ffffff;
   --ok: #6ee7a0; --ok-soft: #0f2a1c; --ok-solid: #15803d;
   --warn: #fbbf24; --warn-soft: #2e2410;
   --danger: #fa9a93; --danger-soft: #38201f; --danger-solid: #b42318; --danger-solid-hover: #cf3a2d;
   --info: #67d4ea; --info-soft: #11292f;
-  --chart-1: #818cf8; --chart-2: #5fd0e6; --chart-3: #f0a452; --chart-4: #c4a7f5; --chart-5: #979cbd;
+  --chart-1: #60a5fa; --chart-2: #38bdf8; --chart-3: #f0a452; --chart-4: #7dd3fc; --chart-5: #94a3b8;
   --sh-soft: 0 1px 2px rgb(0 0 0 / 0.35);
   --sh-glass: 0 1px 2px rgb(0 0 0 / 0.35);
   --sh-pop: 0 18px 48px -14px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.06);
-  --glow: 0 0 24px -6px rgb(99 102 241 / 0.55); /* used only on the primary action */
-  --glass-bg: rgb(19 22 38 / 0.82);
+  --glow: 0 0 20px -6px rgb(37 99 235 / 0.45); /* used only on the primary action */
+  --glass-bg: rgb(19 22 38 / 0.88);
   --glass-border: var(--line);
   --scrim: rgb(2 3 10 / 0.66);
-  --spot: rgb(129 140 248 / 0.16);
-  --bg-glow-1: rgb(99 102 241 / 0.4);
-  --bg-glow-2: rgb(147 51 234 / 0.3);
-  --bg-glow-3: rgb(37 99 235 / 0.26);
+  --spot: rgb(96 165 250 / 0.10);
+  --bg-glow-1: rgb(37 99 235 / 0.18);
+  --bg-glow-2: rgb(30 58 138 / 0.14);
+  --bg-glow-3: rgb(30 41 59 / 0.18);
   --bg-sheen: rgb(255 255 255 / 0);
-  --bg-dots: rgb(165 180 252 / 0.3);
-  --surface-alpha: 74%;
+  --bg-dots: transparent;
+  --surface-alpha: 78%;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -210,8 +210,19 @@
       radial-gradient(62% 56% at 88% 104%, var(--bg-glow-3), transparent 72%),
       radial-gradient(48% 46% at 0% 100%, var(--bg-glow-2), transparent 74%),
       radial-gradient(44% 34% at 52% 46%, color-mix(in srgb, var(--bg-glow-1) 45%, transparent), transparent 75%); }
-  .app-bg::after { content: ""; position: absolute; inset: 0; opacity: 0.5; mix-blend-mode: soft-light;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E"); }
+  .app-bg::after { display: none; }
+
+  /* Login page atmosphere: clean blue-white / neutral lighting with Beams/ChromaWaves, no purple tint, no dots */
+  .login-page .app-bg::before {
+    background:
+      radial-gradient(70% 58% at 2% 0%, rgb(56 189 248 / 0.16), transparent 70%),
+      radial-gradient(56% 50% at 100% 4%, rgb(224 242 254 / 0.12), transparent 70%),
+      radial-gradient(62% 56% at 88% 104%, rgb(56 189 248 / 0.14), transparent 72%),
+      radial-gradient(48% 46% at 0% 100%, rgb(186 230 253 / 0.12), transparent 74%),
+      radial-gradient(44% 34% at 52% 46%, rgb(224 242 254 / 0.08), transparent 75%);
+  }
+  .login-page .app-bg::after { display: none; }
+  .login-page .app-bg svg { display: none; }
 }
 
 /* ---------------------------------- motion ----------------------------------
@@ -252,5 +263,5 @@ html.theme-transition, html.theme-transition *, html.theme-transition *::before,
   .shimmer { animation: none; }
 }
 
-/* brand mark gradient (decorative, theme-independent) */
-:root { --brand-a: #6366f1; --brand-b: #8b5cf6; }
+/* brand mark gradient (clean academic graphite to restrained blue) */
+:root { --brand-a: #1e293b; --brand-b: #2563eb; }

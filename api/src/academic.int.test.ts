@@ -26,7 +26,7 @@ suite("academic setup API (PostgreSQL)", () => {
     execSync("npx prisma migrate deploy", { cwd: fileURLToPath(new URL("..", import.meta.url)), env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" });
     db = createDatabase(url);
     await db.prisma!.$executeRawUnsafe(`TRUNCATE "SessionTopicEntry","SessionLogRevision","SessionLog","Exam","CalendarEntry","TimetableEntry","SyllabusTopic","SyllabusUnit","Subject","Batch","Faculty","Semester" RESTART IDENTITY CASCADE`);
-    app = createApp({ CORS_ORIGIN: "http://localhost:5173" }, db, () => new Date("2026-10-16T08:00:00Z"));
+    app = createApp({ CORS_ORIGIN: "http://localhost:5173", DEMO_DEFAULT_CAMPUS: "*" }, db, () => new Date("2026-10-16T08:00:00Z"));
   });
   afterAll(async () => { await db?.close(); });
 

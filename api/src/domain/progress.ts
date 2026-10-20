@@ -111,8 +111,9 @@ export function classify(remaining: number, available: number | null, scope: num
   if (scope <= EPS) return { risk: "UNKNOWN", ratio: null };
   if (remaining <= EPS) return { risk: "COMPLETE", ratio: null };
   if (available === null) return { risk: "UNKNOWN", ratio: null };
-  const ratio = round2(available / remaining);
-  return { risk: ratio >= th.onTrack ? "ON_TRACK" : ratio >= th.tight ? "TIGHT" : "DANGER", ratio };
+  const rawRatio = available / remaining;
+  const ratio = round2(rawRatio);
+  return { risk: rawRatio >= th.onTrack ? "ON_TRACK" : rawRatio >= th.tight ? "TIGHT" : "DANGER", ratio };
 }
 
 export function evaluateProgress(input: ProgressInput): SubjectProgress {

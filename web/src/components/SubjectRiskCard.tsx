@@ -37,10 +37,10 @@ export function SubjectRiskCard({ row, live }: { row: SubjectRow; live: boolean 
 
       <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <div><dt className="text-xs text-fg-subtle">Coverage</dt><dd className="mt-0.5 text-base font-semibold tabular-nums text-fg">{row.coveragePct}%</dd></div>
-        <div><dt className="whitespace-nowrap text-xs text-fg-subtle">Planned today</dt><dd className="mt-0.5 text-base font-semibold tabular-nums text-fg">{row.expectedPct}%</dd></div>
+        <div><dt className="whitespace-nowrap text-xs text-fg-subtle">Should be at</dt><dd className="mt-0.5 text-base font-semibold tabular-nums text-fg">{row.expectedPct}%</dd></div>
         <div><dt className="text-xs text-fg-subtle">Behind plan</dt><dd className="mt-0.5 text-base font-semibold tabular-nums text-fg">{hoursText(row.hoursBehind)}</dd></div>
         <div>
-          <dt className="text-xs text-fg-subtle">Buffer ratio</dt>
+          <dt className="text-xs text-fg-subtle">Time cushion</dt>
           <dd className={cx("mt-0.5 text-base font-semibold tabular-nums", row.bufferRatio == null ? "text-fg-faint" : severe ? "text-danger" : "text-warn")}>{row.bufferRatio == null ? "—" : row.bufferRatio.toFixed(2)}</dd>
         </div>
       </dl>

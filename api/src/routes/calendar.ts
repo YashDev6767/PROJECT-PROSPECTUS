@@ -9,7 +9,8 @@ import { asyncHandler, callerRole, failOnIssues, HttpError, needDb, notFound, pa
 import { calendarFields, calendarIssues, calendarUpdate, campusId, monthQuery } from "../http/schemas.js";
 import { toEntryLike } from "../services/calendarData.js";
 import { dbDate, iso } from "../services/format.js";
-import { assertCampus, assertOrganizationWide, hideOutOfScope } from "../http/scope.js";
+import type { Prisma } from "@prisma/client";
+import { and, assertCampus, assertOrganizationWide, audienceOf, examAudience, hideOutOfScope } from "../http/scope.js";
 import type { Deps } from "./deps.js";
 
 const DEFAULT_RULE: SaturdayRule = "SECOND_FOURTH";
@@ -45,7 +46,7 @@ export function calendarRouter({ db }: Deps): Router {
 
     const [entryRows, examRows] = await Promise.all([
       prisma.calendarEntry.findMany({ where: { OR: [{ campusId: null }, { campusId: q.campusId }], startsOn: { lte: dbDate(to) }, endsOn: { gte: dbDate(from) } }, orderBy: [{ startsOn: "asc" }, { title: "asc" }] }),
-      prisma.exam.findMany({ where: { semester: { campusId: q.campusId, track: q.track }, startsOn: { lte: dbDate(to) }, endsOn: { gte: dbDate(from) } }, include: { batch: true }, orderBy: { startsOn: "asc" } }),
+      prisma.exam.findMany({ where: and<Prisma.ExamWhereInput>({ semester: { campusId: q.campusId, track: q.track }, startsOn: { lte: dbDate(to) }, endsOn: { gte: dbDate(from) } }, examAudience(audienceOf(res))), include: { batch: true }, orderBy: { startsOn: "asc" } }),
     ]);
     const exams = examRows.map((e) => ({ id: e.id, name: e.name, type: e.type, startsOn: iso(e.startsOn), endsOn: iso(e.endsOn), batchName: e.batch?.name ?? null, isSample: e.isSample }));
     const days = describeMonth(q.month, rule, entryRows.map(toEntryLike)).map((d) => ({

@@ -48,16 +48,17 @@ suite("campus isolation (PostgreSQL)", () => {
     execSync("npx prisma migrate deploy", { cwd: fileURLToPath(new URL("..", import.meta.url)), env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" });
     db = createDatabase(url);
     await db.prisma!.$executeRawUnsafe(`TRUNCATE "SessionTopicEntry","SessionLogRevision","SessionLog","Exam","CalendarEntry","TimetableEntry","SyllabusTopic","SyllabusUnit","Subject","Batch","Faculty","Semester" RESTART IDENTITY CASCADE`);
-    dev = createApp({ CORS_ORIGIN: "http://localhost:5173" }, db, () => clock);
-    const post = async (path: string, body: object) => { const r = await admin(request(dev).post(path)).send(body); if (r.status >= 300) throw new Error(`${path} -> ${r.status} ${JSON.stringify(r.body)}`); return r.body; };
+    dev = createApp({ CORS_ORIGIN: "http://localhost:5173" }, db, () => clock); // real development defaults: a demo preview is ONE campus
+    const setup = createApp({ CORS_ORIGIN: "http://localhost:5173", DEMO_DEFAULT_CAMPUS: "*" }, db, () => clock); // fixture builder only
+    const post = async (path: string, body: object) => { const r = await admin(request(setup).post(path)).send(body); if (r.status >= 300) throw new Error(`${path} -> ${r.status} ${JSON.stringify(r.body)}`); return r.body; };
     for (const [k, campus, tag] of [["a", A, "ALPHA"], ["b", B, "BRAVO"]] as const) {
       const sem = await post("/api/semesters", { name: `${tag} Semester`, academicYear: "2026-27", track: "MIRAI", campusId: campus, startsOn: "2026-09-07", endsOn: "2026-12-18", saturdayRule: "NONE" });
-      await admin(request(dev).post(`/api/semesters/${sem.id}/activate`)).send({});
+      await admin(request(setup).post(`/api/semesters/${sem.id}/activate`)).send({});
       ids[`sem${k}`] = sem.id;
       ids[`batch${k}`] = (await post("/api/batches", { name: `${tag} Batch`, semesterId: sem.id })).id;
       ids[`fac${k}`] = (await post("/api/faculty", { name: `${tag} Faculty`, campusId: campus })).id;
       ids[`sub${k}`] = (await post("/api/subjects", { code: `${tag.slice(0, 2)}1`, name: `${tag} Subject`, batchId: ids[`batch${k}`], facultyId: ids[`fac${k}`] })).id;
-      const syl = await admin(request(dev).put(`/api/subjects/${ids[`sub${k}`]}/syllabus`)).send({ units: [{ title: `${tag} Unit`, topics: [{ title: `${tag} topic`, plannedHours: 4 }] }] });
+      const syl = await admin(request(setup).put(`/api/subjects/${ids[`sub${k}`]}/syllabus`)).send({ units: [{ title: `${tag} Unit`, topics: [{ title: `${tag} topic`, plannedHours: 4 }] }] });
       ids[`topic${k}`] = syl.body.units[0].topics[0].id;
       ids[`slot${k}`] = (await post("/api/timetable", { subjectId: ids[`sub${k}`], weekday: 1, startTime: "09:00", endTime: "10:00", room: `${tag}-R1` })).id;
       ids[`exam${k}`] = (await post("/api/exams", { name: `${tag} Exam`, type: "MID_TERM", semesterId: sem.id, startsOn: "2026-10-26", endsOn: "2026-10-30" })).id;
@@ -357,13 +358,13 @@ suite("campus isolation (PostgreSQL)", () => {
 
   /* ------------------------------------------------------------------ */
   describe("identity, spoofing and fail-closed membership", () => {
-    it("anonymous callers are rejected everywhere except health, metadata and sign-in", async () => {
+    it("anonymous callers are rejected everywhere except health and sign-in", async () => {
       for (const path of ["/api/dashboard", "/api/semesters", "/api/subjects", "/api/subjects/export.csv?semesterId=x", "/api/calendar/export.csv?campusId=rgib", "/api/session-logs/schedule?date=2026-10-05&campusId=rgib", "/api/student/portal", "/api/reports?type=course_progress"]) {
         expect((await call("anon", "get", path)).status, path).toBe(401);
       }
       expect((await call("anon", "post", "/api/faculty", { name: "x", campusId: A })).status).toBe(401);
       expect((await call("anon", "get", "/api/health")).status).toBe(200);
-      expect((await call("anon", "get", "/api/meta")).status).toBe(200);
+      expect((await call("anon", "get", "/api/meta")).status).toBe(401); // campus list is not public
     });
 
     it("spoofed role, campus, faculty and batch headers grant nothing when a session exists or demo headers are off", async () => {
@@ -386,7 +387,7 @@ suite("campus isolation (PostgreSQL)", () => {
           expect(res.status, `${who} ${method} ${path}`).toBe(403);
           expect(res.body.error).toBe("no_campus_assigned");
         }
-        expect((await call(who, "get", "/api/meta")).status).toBe(200); // metadata only
+        expect((await call(who, "get", "/api/meta")).status).toBe(403); // no campus, no campus list
         expect((await call(who, "get", "/api/auth/session")).body.user.email).toBe(`${who}@t.test`.toLowerCase()); // accounts store lower-case emails
       }
     });
@@ -396,13 +397,32 @@ suite("campus isolation (PostgreSQL)", () => {
       expect(() => createAuth({ AUTH_USERS: bad, SESSION_SECRET: "s".repeat(40) })).toThrow(/known campus ids/);
     });
 
-    it("development demo mode: X-Demo-Campus scopes a preview; without it the preview is unscoped (documented, spoofable, off in production); an invalid campus fails closed", async () => {
-      const d = (campus?: string) => { const t = request(dev).get("/api/subjects").set("X-Demo-Role", "campus_manager"); return campus === undefined ? t : t.set("X-Demo-Campus", campus); };
-      const scoped = await d(A); expect(text(scoped)).not.toContain("BRAVO"); expect(text(scoped)).toContain("ALPHA");
-      expect((await request(dev).get(`/api/subjects?campusId=${B}`).set("X-Demo-Role", "campus_manager").set("X-Demo-Campus", A)).status).toBe(403);
-      const unscoped = await d(); expect(text(unscoped)).toContain("BRAVO");
-      const bad = await d("atlantis"); expect(bad.status).toBe(403); expect(bad.body.error).toBe("no_campus_assigned");
-      expect((await request(dev).get("/api/subjects")).status).toBe(200); // anonymous development reads stay open (labelled demo mode)
+    it("development demo mode never becomes unrestricted by omission: a preview is ONE campus (named, or the configured default); '*' is an explicit opt-in; invalid fails closed", async () => {
+      const get = (app: ReturnType<typeof createApp>, path: string, role: string | null, campus?: string) => { let t = request(app).get(path); if (role) t = t.set("X-Demo-Role", role); if (campus !== undefined) t = t.set("X-Demo-Campus", campus); return t; };
+      // named campus: scoped, and switching changes what is visible
+      const onA = await get(dev, "/api/subjects", "campus_manager", A); expect(text(onA)).toContain("ALPHA"); expect(text(onA)).not.toContain("BRAVO");
+      const onB = await get(dev, "/api/subjects", "campus_manager", B); expect(text(onB)).toContain("BRAVO"); expect(text(onB)).not.toContain("ALPHA");
+      expect((await get(dev, `/api/subjects?campusId=${B}`, "campus_manager", A)).status).toBe(403);
+      // no campus selected: the default campus only (hi-tech here, which holds none of this test's data) — not everything
+      const none = await get(dev, "/api/subjects", "admin"); expect(none.status).toBe(200); expect(text(none)).not.toContain("ALPHA"); expect(text(none)).not.toContain("BRAVO");
+      expect((await get(dev, `/api/subjects?campusId=${A}`, "admin")).status).toBe(403); // even a demo "admin" must select the campus first
+      // the configured default is a single campus too
+      const dev2 = createApp({ CORS_ORIGIN: "http://localhost:5173", DEMO_DEFAULT_CAMPUS: A }, db, () => clock);
+      const viaDefault = await get(dev2, "/api/subjects", "admin"); expect(text(viaDefault)).toContain("ALPHA"); expect(text(viaDefault)).not.toContain("BRAVO");
+      // explicit all-campus preview must be asked for
+      const star = await get(dev, "/api/subjects", "admin", "*"); expect(text(star)).toContain("ALPHA"); expect(text(star)).toContain("BRAVO");
+      // invalid selection fails closed
+      const bad = await get(dev, "/api/subjects", "admin", "atlantis"); expect(bad.status).toBe(403); expect(bad.body.error).toBe("no_campus_assigned");
+      // anonymous development callers (no role at all) get the same single-campus default, not everything
+      const anon = await get(dev, "/api/subjects", null); expect(anon.status).toBe(200); expect(text(anon)).not.toContain("ALPHA"); expect(text(anon)).not.toContain("BRAVO");
+      // demo scope applies to writes too
+      expect((await request(dev).post("/api/faculty").set("X-Demo-Role", "campus_manager").set("X-Demo-Campus", A).send({ name: "x", campusId: B })).status).toBe(403);
+    });
+
+    it("demo headers never override a real session: role, campus, faculty and batch all come from the account", async () => {
+      const res = await request(prod).get("/api/subjects").set("Cookie", cookies.stuA!).set("X-Demo-Role", "admin").set("X-Demo-Campus", "*").set("X-Demo-Faculty", ids.facb!).set("X-Demo-Batch", ids.batchb!);
+      expect(res.status).toBe(200); expect(text(res)).not.toContain("BRAVO");
+      expect((await request(prod).post("/api/faculty").set("Cookie", cookies.stuA!).set("X-Demo-Role", "admin").set("X-Demo-Campus", "*").send({ name: "x", campusId: B })).status).toBe(403);
     });
 
     it("existing behaviour is intact: logout revokes, the student portal and carry-forward work inside the caller's campus, readiness and progression numbers are unchanged", async () => {

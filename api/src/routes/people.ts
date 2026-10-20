@@ -5,7 +5,8 @@ import { weeklyHours } from "../domain/timetable.js";
 import { asyncHandler, HttpError, inUse, needDb, notFound, parse, requireCapability } from "../http/errors.js";
 import { batchCreate, batchUpdate, campusId, facultyCreate, facultyUpdate, track } from "../http/schemas.js";
 import { iso } from "../services/format.js";
-import { assertCampus, campusWhere, hideOutOfScope, inScope, scopeOf } from "../http/scope.js";
+import type { Prisma } from "@prisma/client";
+import { and, assertCampus, audienceOf, batchAudience, campusWhere, examAudience, facultyAudience, hideOutOfScope, inScope, scopeOf, subjectAudience } from "../http/scope.js";
 import type { Deps } from "./deps.js";
 
 const campusName = (id: string) => campuses.find((c) => c.id === id)?.name ?? id;
@@ -25,7 +26,15 @@ export function peopleRouter({ db, today }: Deps): Router {
   r.get("/batches", asyncHandler(async (req, res) => {
     const q = parse(z.object({ campusId: campusId.optional(), track: track.optional(), semesterId: z.string().max(64).optional() }), req.query);
     const prisma = needDb(db);
-    const rows = await prisma.batch.findMany({ where: { semesterId: q.semesterId, semester: { campusId: campusWhere(res, q.campusId), track: q.track } }, include: batchInclude, orderBy: [{ semester: { startsOn: "desc" } }, { name: "asc" }] });
+    const aud = audienceOf(res);
+    // Development demo only: a student preview that has not chosen a batch yet needs the campus's batch names for the "preview as" picker (never offered to a real student account).
+    const identity = res.locals.identity as { source?: string; role?: string; batchId?: string | null } | undefined;
+    const batchPicker = identity?.source === "demo" && identity.role === "student" && !identity.batchId;
+    const rows = await prisma.batch.findMany({
+      where: and<Prisma.BatchWhereInput>({ semesterId: q.semesterId, semester: { campusId: campusWhere(res, q.campusId), track: q.track } }, batchPicker ? undefined : batchAudience(aud)),
+      include: { semester: true, _count: { select: { subjects: { where: subjectAudience(aud) ?? {} }, exams: { where: examAudience(aud) ?? {} } } } },
+      orderBy: [{ semester: { startsOn: "desc" } }, { name: "asc" }],
+    });
     res.json({ batches: rows.map(serializeBatch) });
   }));
 
@@ -71,7 +80,12 @@ export function peopleRouter({ db, today }: Deps): Router {
   r.get("/faculty", asyncHandler(async (req, res) => {
     const q = parse(z.object({ campusId: campusId.optional() }), req.query);
     const prisma = needDb(db);
-    const rows = await prisma.faculty.findMany({ where: { campusId: campusWhere(res, q.campusId) }, include: facultyInclude, orderBy: { name: "asc" } });
+    const aud = audienceOf(res);
+    const rows = await prisma.faculty.findMany({
+      where: and<Prisma.FacultyWhereInput>({ campusId: campusWhere(res, q.campusId) }, facultyAudience(aud)),
+      include: { subjects: { where: subjectAudience(aud) ?? {}, include: { timetable: true, batch: { include: { semester: true } } } } },
+      orderBy: { name: "asc" },
+    });
     res.json({ faculty: rows.map((f) => serializeFaculty(f, today())) });
   }));
 

@@ -258,11 +258,11 @@ export function Reports() {
             </Select>
           </Field>
 
-          <Field label="From Date" hint="YYYY-MM-DD">
+          <Field label="From date">
             <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </Field>
 
-          <Field label="To Date" hint="YYYY-MM-DD">
+          <Field label="To date">
             <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </Field>
         </div>
@@ -312,7 +312,7 @@ export function Reports() {
                             "Coverage",
                             "Syllabus Left",
                             "Teaching Left",
-                            "Buffer",
+                            "Time cushion",
                             "Pace",
                             "Deadline",
                           ].map((col) => (
@@ -490,7 +490,7 @@ export function Reports() {
                             "Coverage",
                             "Syllabus Left",
                             "Teaching Left",
-                            "Buffer",
+                            "Time cushion",
                             "Scope Mode",
                           ].map((col) => (
                             <th key={col} scope="col" className={tableClasses.th}>

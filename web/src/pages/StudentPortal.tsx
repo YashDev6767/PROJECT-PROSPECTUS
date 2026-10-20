@@ -54,7 +54,7 @@ function ExamBlock({ e }: { e: StudentExam }) {
             <p className="mt-0.5 text-xs text-fg-subtle">
               {s.coveragePct === null ? "No syllabus hours to measure yet." : `${s.coveragePct}% of what this exam covers is done · ${hours(s.remainingHours)} to go${s.teachingHoursLeft !== null ? ` · ${hours(s.teachingHoursLeft)} of classes left before it` : ""}`}
             </p>
-            <p className="mt-0.5 text-xs text-fg-subtle">{s.scope}</p>
+            {!s.scope.startsWith("These topics") && <p className="mt-0.5 text-xs text-fg-subtle">{s.scope}</p>}
             {s.scopeTopics.length > 0 && (
               <Disclosure summary={`Topics (${s.scopeTopics.length})`}>
                 <ul className="space-y-1 text-sm text-fg-2">{s.scopeTopics.map((t) => <li key={`${t.unitTitle}-${t.title}`}>{t.title} <span className="text-fg-subtle">· {t.completionPct === 100 ? "covered" : t.completionPct > 0 ? `${t.completionPct}% done` : "not yet covered"}</span></li>)}</ul>
@@ -69,7 +69,7 @@ function ExamBlock({ e }: { e: StudentExam }) {
 export function StudentPortal() {
   const { auth, batchId, setBatchId, campusId } = useApp();
   const demo = !auth.user; // development demo mode: no signed-in student, so the batch is previewed by choice
-  const batches = useResource<{ batches: Batch[] }>(demo && campusId ? `/api/batches?campusId=${campusId}` : null);
+  const batches = useResource<{ batches: Batch[] }>(demo ? (campusId ? `/api/batches?campusId=${campusId}` : "/api/batches") : null);
   const res = useResource<StudentPortalData>(batchId || !demo ? "/api/student/portal" : null);
 
   const picker = demo && (

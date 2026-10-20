@@ -1,5 +1,5 @@
 /** Exam readiness from persisted exams, timetable, calendar, syllabus and session logs. Nothing here is stored or scored. */
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { addDays, daysBetweenISO, type ISODate } from "../domain/dates.js";
 import { examPhase, examStatus, scopeModeFor, topicInExamScope } from "../domain/examReadiness.js";
 import { examTypeLabels } from "../domain/exams.js";
@@ -10,25 +10,25 @@ import type { Settings } from "./settings.js";
 
 export type ExamReadinessState = "ready" | "no_active_semester" | "no_exams";
 
-export async function buildExamReadiness(prisma: PrismaClient, q: { campusId: string; track?: Track | undefined; semesterId?: string | undefined; asOf: ISODate; /** only exams and subjects that apply to this batch (the student portal) */ batchId?: string | undefined; /** also list the in-scope topics of each subject */ includeTopics?: boolean }, settings: Settings) {
+export async function buildExamReadiness(prisma: PrismaClient, q: { campusId: string; track?: Track | undefined; semesterId?: string | undefined; asOf: ISODate; /** only exams and subjects that apply to this batch (the student portal) */ batchId?: string | undefined; /** faculty/student audience: only these subjects and the exams that apply to them */ audience?: { subject?: Prisma.SubjectWhereInput | undefined; exam?: Prisma.ExamWhereInput | undefined; semester?: Prisma.SemesterWhereInput | undefined } | undefined; /** also list the in-scope topics of each subject */ includeTopics?: boolean }, settings: Settings) {
   const semesterWhere = q.semesterId
     ? { id: q.semesterId, campusId: q.campusId }
     : { campusId: q.campusId, track: q.track, isActive: true, startsOn: { lte: dbDate(q.asOf) }, endsOn: { gte: dbDate(q.asOf) } };
-  const semesters = await prisma.semester.findMany({ where: semesterWhere });
+  const semesters = await prisma.semester.findMany({ where: q.audience?.semester ? { AND: [semesterWhere, q.audience.semester] } : semesterWhere });
   const base = { asOf: q.asOf, campusId: q.campusId, thresholds: settings.thresholds };
   if (semesters.length === 0) {
     return { ...base, state: "no_active_semester" as ExamReadinessState, message: "No semester is active for this campus today, so there are no exams to prepare for. Activate the current semester under Semesters.", exams: [] };
   }
 
   const exams = await prisma.exam.findMany({
-    where: { semesterId: { in: semesters.map((s) => s.id) }, endsOn: { gte: dbDate(q.asOf) }, ...(q.batchId ? { OR: [{ batchId: null }, { batchId: q.batchId }] } : {}) },
+    where: { AND: [{ semesterId: { in: semesters.map((s) => s.id) }, endsOn: { gte: dbDate(q.asOf) }, ...(q.batchId ? { OR: [{ batchId: null }, { batchId: q.batchId }] } : {}) }, ...(q.audience?.exam ? [q.audience.exam] : [])] },
     include: { semester: true, batch: true }, orderBy: [{ startsOn: "asc" }, { name: "asc" }],
   });
   if (exams.length === 0) {
     return { ...base, state: "no_exams" as ExamReadinessState, message: "No upcoming exams are configured for the active semester. Add them under Exam Schedule.", exams: [] };
   }
 
-  const contexts = await loadSubjectContexts(prisma, { batchId: q.batchId, batch: { semesterId: { in: semesters.map((s) => s.id) } } });
+  const contexts = await loadSubjectContexts(prisma, { AND: [{ batchId: q.batchId, batch: { semesterId: { in: semesters.map((s) => s.id) } } }, ...(q.audience?.subject ? [q.audience.subject] : [])] });
   const out = exams.map((e) => {
     const startsOn = iso(e.startsOn), endsOn = iso(e.endsOn);
     const deadline = { date: startsOn, lastTeachingDate: addDays(startsOn, -1), source: "exam" as const, examType: e.type, label: `${e.name} starts ${startsOn}` };

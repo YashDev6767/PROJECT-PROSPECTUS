@@ -10,7 +10,8 @@ import { computeSubjectResult, loadSubjectContexts, summarize } from "../service
 import { sessionsInRange } from "../services/scheduleData.js";
 import { logInclude, serializeLog, validateAgainstData } from "../services/sessionLogData.js";
 import type { Deps } from "./deps.js";
-import { assertCampus, campusWhere, hideOutOfScope, inScope, scopeOf } from "../http/scope.js";
+import { assertCampus, audienceOf, campusWhere, hideOutOfScope, hideUnlessAudience, inScope, scopeOf } from "../http/scope.js";
+import { computeReminders, dispatchReminders, getReminderAuditLog } from "../services/reminders.js";
 
 /** Demo identity: which faculty member the caller says they are. NOT verified — see README. */
 
@@ -34,17 +35,67 @@ export function sessionLogsRouter(deps: Deps): Router {
     const q = parse(scheduleQuery, req.query);
     assertCampus(res, q.campusId);
     const prisma = needDb(db);
-    const { items, notices } = await sessionsInRange(prisma, { from: q.date, to: q.date, campusId: q.campusId, track: q.track, facultyId: q.facultyId });
+    const aud = audienceOf(res); // faculty: their own classes only (whatever facultyId was asked for); students: their batch only
+    const { items, notices } = await sessionsInRange(prisma, { from: q.date, to: q.date, campusId: q.campusId, track: q.track, facultyId: aud.kind === "faculty" ? aud.facultyId : q.facultyId, batchId: aud.kind === "student" ? aud.batchId : undefined });
     res.json({ date: q.date, today: today(), items, notices });
   }));
 
   r.get("/session-logs/pending", asyncHandler(async (req, res) => {
     const q = parse(pendingQuery, req.query);
     assertCampus(res, q.campusId);
+    const aud = audienceOf(res);
+    if (aud.kind === "student") throw new HttpError(403, "forbidden", "The student role cannot see the class-logging queue."); // pending logs are a faculty/manager task list
     const prisma = needDb(db);
     const to = addDays(today(), -1);
-    const { items } = await sessionsInRange(prisma, { from: addDays(today(), -q.days), to, campusId: q.campusId, track: q.track, facultyId: q.facultyId });
+    const { items } = await sessionsInRange(prisma, { from: addDays(today(), -q.days), to, campusId: q.campusId, track: q.track, facultyId: aud.kind === "faculty" ? aud.facultyId : q.facultyId });
     res.json({ from: addDays(today(), -q.days), to, items: items.filter((i) => i.log === null).reverse() });
+  }));
+
+  /* ---- missed-log reminders and 48h campus manager escalations ---- */
+  r.get("/session-logs/reminders", requireCapability("sessions:read"), asyncHandler(async (req, res) => {
+    const q = parse(pendingQuery, req.query);
+    assertCampus(res, q.campusId);
+    const aud = audienceOf(res);
+    const prisma = needDb(db);
+    const to = addDays(today(), -1);
+    const { items } = await sessionsInRange(prisma, {
+      from: addDays(today(), -Math.max(q.days, 14)), to,
+      campusId: q.campusId, track: q.track,
+      facultyId: aud.kind === "faculty" ? aud.facultyId : q.facultyId,
+    });
+    const unlogged = items.filter((i) => i.log === null).reverse();
+    const reminders = computeReminders(unlogged, today());
+    const auditLog = getReminderAuditLog();
+    res.json({
+      asOf: today(),
+      totalPending: reminders.length,
+      facultyReminders: reminders.filter((r) => r.tier === "FACULTY_REMINDER").length,
+      managerEscalations: reminders.filter((r) => r.tier === "MANAGER_ESCALATION").length,
+      reminders,
+      auditLog,
+    });
+  }));
+
+  r.post("/session-logs/reminders/dispatch", requireCapability("sessions:write"), asyncHandler(async (req, res) => {
+    const q = parse(pendingQuery, req.query);
+    assertCampus(res, q.campusId);
+    const aud = audienceOf(res);
+    const prisma = needDb(db);
+    const to = addDays(today(), -1);
+    const { items } = await sessionsInRange(prisma, {
+      from: addDays(today(), -Math.max(q.days, 14)), to,
+      campusId: q.campusId, track: q.track,
+      facultyId: aud.kind === "faculty" ? aud.facultyId : q.facultyId,
+    });
+    const unlogged = items.filter((i) => i.log === null).reverse();
+    const result = dispatchReminders(unlogged, today());
+    res.json({
+      status: "dispatched",
+      dispatchedCount: result.dispatched.length,
+      skippedDuplicates: result.skippedDuplicates,
+      dispatched: result.dispatched,
+      totalAuditRecords: getReminderAuditLog().length,
+    });
   }));
 
   /* ---- smart carry-forward: unfinished topics from the previous teaching session of the same subject (read-only) ---- */
@@ -54,6 +105,7 @@ export function sessionLogsRouter(deps: Deps): Router {
     const [ctx] = await loadSubjectContexts(prisma, { id: q.subjectId });
     if (!ctx) throw notFound("Subject");
     hideOutOfScope(res, ctx.subject.batch.semester.campusId, "Subject");
+    hideUnlessAudience(res, ctx.subject, "Subject");
     assertOwnership(callerRole(res), callerFaculty(res), ctx.subject);
     const s = ctx.subject;
     const result = carryForwardFor({
@@ -85,6 +137,7 @@ export function sessionLogsRouter(deps: Deps): Router {
     const row = await prisma.sessionLog.findUnique({ where: { id: req.params.id! }, include: { ...logInclude, revisions: { orderBy: { revision: "desc" } }, mergedLogs: { select: { id: true, subject: { select: { name: true, batch: { select: { name: true } } } } } } } });
     if (!row) throw notFound("Session log");
     hideOutOfScope(res, row.subject.batch.semester.campusId, "Session log");
+    hideUnlessAudience(res, row.subject, "Session log"); // a colleague's log does not exist for this caller
     if (callerRole(res) === "faculty") assertOwnership("faculty", callerFaculty(res), row.subject);
     res.json({
       ...serializeLog(row),
@@ -133,6 +186,7 @@ export function sessionLogsRouter(deps: Deps): Router {
     const current = await prisma.sessionLog.findUnique({ where: { id: req.params.id! }, include: { ...logInclude, mergedLogs: { select: { id: true } }, makeup: { select: { id: true } } } });
     if (!current) throw notFound("Session log");
     hideOutOfScope(res, current.subject.batch.semester.campusId, "Session log");
+    hideUnlessAudience(res, current.subject, "Session log");
     assertOwnership(role, callerFaculty(res), current.subject);
 
     const [ctx] = await loadSubjectContexts(prisma, { id: current.subjectId });

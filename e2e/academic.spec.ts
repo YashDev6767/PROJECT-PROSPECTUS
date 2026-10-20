@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { asFaculty, ensureE2EData } from "./helpers";
 
 test.skip(!process.env.TEST_DATABASE_URL, "needs TEST_DATABASE_URL (see README: npm run db:embedded)");
 test.describe.configure({ mode: "serial" });
@@ -100,7 +101,9 @@ test("syllabus: reorder and save, and an invalid CSV is rejected row by row", as
   await expect(page.getByText("Syllabus saved")).toBeVisible();
   await expect(page.getByLabel("Unit 1 topic 1 title")).toHaveValue("Sample Topic 1.2"); // persisted order
   await page.getByRole("button", { name: "Move topic 1.2 up" }).click(); // restore original order
+  const restored = page.waitForResponse((r) => r.request().method() === "PUT" && /\/syllabus$/.test(r.url()));
   await save.click();
+  expect((await restored).ok()).toBe(true); // wait for the server to confirm, so the shared database really is back to its original order when the test ends
   await expect(page.getByLabel("Unit 1 topic 1 title")).toHaveValue("Sample Topic 1.1");
 
   await page.getByRole("button", { name: "Import CSV" }).click();
@@ -110,9 +113,10 @@ test("syllabus: reorder and save, and an invalid CSV is rejected row by row", as
   await expect(dialog(page).getByRole("button", { name: /Replace syllabus/ })).toHaveCount(0);
 });
 
-test("roles: faculty sees data but no write controls", async ({ page }) => {
-  await asRole(page, "faculty", "/semesters");
-  await expect(page.getByText("Semester 3").first()).toBeVisible();
+test("roles: faculty sees their own data but no write controls", async ({ page, request }) => {
+  const data = await ensureE2EData(request);
+  await asFaculty(page, data.facultyId, "/semesters");
+  await expect(page.getByText("E2E Spring").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "New semester" })).toHaveCount(0);
   await page.goto("/calendar");
   await expect(page.getByRole("grid")).toBeVisible();
@@ -122,5 +126,5 @@ test("roles: faculty sees data but no write controls", async ({ page }) => {
 test("sample data is labelled everywhere it appears", async ({ page }) => {
   await asRole(page, "admin", "/exams");
   await expect(page.getByText("Sample", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText(/exam readiness .* not built yet/i)).toBeVisible();
+  await expect(page.getByText(/to see whether each subject will be ready in time/i)).toBeVisible();
 });

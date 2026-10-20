@@ -44,7 +44,7 @@ describe("Semesters page", () => {
     const calls = mockApi(list);
     renderAt("/semesters", "admin");
     expect(await screen.findByText("Semester 3")).toBeInTheDocument();
-    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.getAllByText("Active").length).toBeGreaterThan(0);
     expect(screen.getByText("Sample")).toBeInTheDocument();
     expect(calls.find((c) => c.path.startsWith("/api/semesters"))?.headers["X-Demo-Role"]).toBe("admin");
   });

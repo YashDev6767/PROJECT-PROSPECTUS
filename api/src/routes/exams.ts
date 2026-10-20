@@ -5,7 +5,8 @@ import { examTypeLabels, findExamOverlaps, validateExamDates } from "../domain/e
 import { asyncHandler, failOnIssues, HttpError, needDb, needsConfirmation, notFound, parse, requireCapability } from "../http/errors.js";
 import { campusId, examCreate, examUpdate, track } from "../http/schemas.js";
 import { dbDate, iso } from "../services/format.js";
-import { campusWhere, hideOutOfScope, inScope, scopeOf } from "../http/scope.js";
+import type { Prisma } from "@prisma/client";
+import { and, audienceOf, campusWhere, examAudience, hideOutOfScope, inScope, scopeOf } from "../http/scope.js";
 import type { Deps } from "./deps.js";
 
 const include = { semester: true, batch: true } as const;
@@ -41,7 +42,7 @@ export function examsRouter({ db }: Deps): Router {
     const q = parse(query, req.query);
     const prisma = needDb(db);
     const rows = await prisma.exam.findMany({
-      where: { semesterId: q.semesterId, semester: { campusId: campusWhere(res, q.campusId), track: q.track } },
+      where: and<Prisma.ExamWhereInput>({ semesterId: q.semesterId, semester: { campusId: campusWhere(res, q.campusId), track: q.track } }, examAudience(audienceOf(res))),
       include, orderBy: [{ startsOn: "asc" }, { name: "asc" }],
     });
     res.json({ exams: rows.map(serializeExam) });
@@ -50,7 +51,7 @@ export function examsRouter({ db }: Deps): Router {
   r.get("/exams/export.csv", asyncHandler(async (req, res) => {
     const q = parse(query, req.query);
     const prisma = needDb(db);
-    const rows = await prisma.exam.findMany({ where: { semesterId: q.semesterId, semester: { campusId: campusWhere(res, q.campusId), track: q.track } }, include, orderBy: [{ startsOn: "asc" }] });
+    const rows = await prisma.exam.findMany({ where: and<Prisma.ExamWhereInput>({ semesterId: q.semesterId, semester: { campusId: campusWhere(res, q.campusId), track: q.track } }, examAudience(audienceOf(res))), include, orderBy: [{ startsOn: "asc" }] });
     res.type("text/csv").attachment("exams.csv").send(toCsv(
       ["name", "type", "semester", "campus", "track", "batch", "start_date", "end_date", "notes", "sample_data"],
       rows.map(serializeExam).map((e) => [e.name, e.type, e.semesterName, e.campusId, e.track, e.batchName, e.startsOn, e.endsOn, e.notes, e.isSample ? "yes" : "no"]),

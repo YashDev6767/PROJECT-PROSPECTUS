@@ -32,7 +32,7 @@ suite("smart carry-forward (PostgreSQL)", () => {
     execSync("npx prisma migrate deploy", { cwd: fileURLToPath(new URL("..", import.meta.url)), env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" });
     db = createDatabase(url);
     await db.prisma!.$executeRawUnsafe(`TRUNCATE "SessionTopicEntry","SessionLogRevision","SessionLog","Exam","CalendarEntry","TimetableEntry","SyllabusTopic","SyllabusUnit","Subject","Batch","Faculty","Semester" RESTART IDENTITY CASCADE`);
-    app = createApp({ CORS_ORIGIN: "http://localhost:5173" }, db, () => clock);
+    app = createApp({ CORS_ORIGIN: "http://localhost:5173", DEMO_DEFAULT_CAMPUS: "*" }, db, () => clock);
     const post = async (path: string, body: object) => (await admin(request(app).post(path)).send(body)).body;
     ids.sem = (await post("/api/semesters", { name: "Sem", academicYear: "2026-27", track: "MIRAI", campusId: "rgib", startsOn: "2026-09-07", endsOn: "2026-12-18", saturdayRule: "NONE" })).id;
     await admin(request(app).post(`/api/semesters/${ids.sem}/activate`)).send({});
@@ -135,8 +135,8 @@ suite("smart carry-forward (PostgreSQL)", () => {
   it("keeps the existing authorization: a faculty member sees only their own subject, students and anonymous callers are refused", async () => {
     expect((await carry(ids.s1!, "2026-09-14", fac(ids.f1!))).status).toBe(200);
     const other = await carry(ids.s1!, "2026-09-14", fac(ids.f2!));
-    expect(other.status).toBe(403); expect(other.body.error).toBe("not_your_subject");
-    expect((await carry(ids.s1!, "2026-09-14", (t) => t.set("X-Demo-Role", "faculty"))).status).toBe(403); // no faculty identity chosen
+    expect(other.status).toBe(404); // a colleague's subject looks nonexistent
+    expect((await carry(ids.s1!, "2026-09-14", (t) => t.set("X-Demo-Role", "faculty"))).status).toBe(404); // no faculty identity chosen
     expect((await carry(ids.s1!, "2026-09-14", (t) => t.set("X-Demo-Role", "student"))).status).toBe(403);
     expect((await carry(ids.s1!, "2026-09-14", (t) => t)).status).toBe(401);
   });

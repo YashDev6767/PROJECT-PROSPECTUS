@@ -3,7 +3,7 @@ import { z } from "zod";
 import { asyncHandler, callerBatch, callerRole, HttpError, needDb, notFound, parse, requireCapability } from "../http/errors.js";
 import { buildStudentPortal } from "../services/studentPortal.js";
 import type { Deps } from "./deps.js";
-import { hideOutOfScope } from "../http/scope.js";
+import { audienceOf, batchAudience, hideOutOfScope } from "../http/scope.js";
 
 const query = z.object({ batchId: z.string().min(1).max(128).optional() });
 
@@ -33,6 +33,8 @@ export function studentRouter({ db, settings, today }: Deps): Router {
     const owner = await prisma.batch.findUnique({ where: { id: batchId }, select: { semester: { select: { campusId: true } } } });
     if (!owner) throw notFound("Batch");
     hideOutOfScope(res, owner.semester.campusId, "Batch");
+    const aud = audienceOf(res);
+    if (aud.kind === "faculty" && (await prisma.batch.count({ where: { id: batchId, ...batchAudience(aud) } })) === 0) throw notFound("Batch"); // a faculty member may open only batches they teach
     const data = await buildStudentPortal(prisma, batchId, today(), settings);
     if (!data) throw notFound("Batch");
     res.json(data);

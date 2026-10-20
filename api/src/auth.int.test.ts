@@ -22,7 +22,7 @@ suite("session-bound faculty ownership (PostgreSQL)", () => {
     execSync("npx prisma migrate deploy", { cwd: fileURLToPath(new URL("..", import.meta.url)), env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" });
     db = createDatabase(url);
     await db.prisma!.$executeRawUnsafe(`TRUNCATE "SessionTopicEntry","SessionLogRevision","SessionLog","Exam","CalendarEntry","TimetableEntry","SyllabusTopic","SyllabusUnit","Subject","Batch","Faculty","Semester" RESTART IDENTITY CASCADE`);
-    const setup = createApp({ CORS_ORIGIN: "http://localhost:5173" }, db, () => clock);
+    const setup = createApp({ CORS_ORIGIN: "http://localhost:5173", DEMO_DEFAULT_CAMPUS: "*" }, db, () => clock);
     const as = (t: request.Test) => t.set("X-Demo-Role", "admin");
     ids.sem = (await as(request(setup).post("/api/semesters")).send({ name: "Sem", academicYear: "2026-27", track: "MIRAI", campusId: "rgib", startsOn: "2026-09-07", endsOn: "2026-12-18", saturdayRule: "NONE" })).body.id;
     await as(request(setup).post(`/api/semesters/${ids.sem}/activate`)).send({});

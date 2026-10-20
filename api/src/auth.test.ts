@@ -114,7 +114,10 @@ describe("restricted evaluation sign-in", () => {
     expect((await request(a).get("/api/dashboard?campusId=hi-tech")).status).toBe(401);
     const admin = cookieOf(await login(a, "admin@msot.test", "admin-passphrase-1"));
     expect((await request(a).get("/api/dashboard?campusId=hi-tech").set("Cookie", admin)).status).toBe(200);
-    expect((await request(a).get("/api/meta")).status).toBe(200);
+    expect((await request(a).get("/api/meta")).status).toBe(401); // metadata is no longer public: nothing before login needs it
+    expect((await request(a).get("/api/health")).body).toEqual({ status: "degraded", service: "prospectus-api" }); // anonymous liveness only
+    expect((await request(a).get("/api/meta").set("Cookie", admin)).body.campuses).toHaveLength(4);
+    expect((await request(a).get("/api/health").set("Cookie", admin)).body.database).toBeDefined();
     // a student account that is not linked to a batch has no campus: signed in, but nothing is readable (fail closed)
     const student = cookieOf(await login(a, "student@msot.test", "student-passphrase-1"));
     const none = await request(a).get("/api/dashboard?campusId=hi-tech").set("Cookie", student);

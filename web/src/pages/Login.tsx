@@ -6,8 +6,12 @@ import { LogoMark, Wordmark } from "../components/layout/Brand";
 import { Button, cx } from "../components/ui";
 import { control, Field, Input } from "../components/ui/forms";
 import { ThemeMenu } from "../components/ThemeMenu";
+import { Beams } from "../components/vendor/reactbits/Beams";
+import { useTheme } from "../context/ThemeContext";
 import { useApp } from "../context/AppContext";
 import { ApiError } from "../lib/api";
+
+import { ChromaWaves } from "../components/chroma-waves";
 
 const emailOk = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 
@@ -23,6 +27,7 @@ export function Login() {
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const pwId = useId();
+  const { resolved } = useTheme();
 
   if (auth.status === "ready" && auth.user) return <Navigate to={from} replace />;
 
@@ -43,8 +48,13 @@ export function Login() {
   const notConfigured = auth.status === "ready" && !auth.sessionLogin;
   const inputCls = "min-h-12 text-[0.9375rem] lg:min-h-12";
   return (
-    <div className="relative isolate flex min-h-screen flex-col">
+    <div className="login-page relative isolate flex min-h-screen flex-col">
       <AppBackground />
+      {/* React Bits Beams (official WebGL2 component, vendored unchanged). A non-interactive layer between the page background and the form:
+          where WebGL2 is unavailable the component draws nothing, so the static AppBackground behind it is the fallback. Light theme uses the component's own `lightMode` (dark ink on a light page); dark theme lowers the component's `opacity` so the white beams never fight the text. */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-[9]" data-testid="login-beams">
+        <Beams color="#ffffff" beamWidth={138} rotation={30} speed={2} glow={1.2} waveLength={290} depth={1.05} fillLight={0.25} brightness={2.95} grain={0} mouseStrength={0.9} lightMode={resolved === "light"} opacity={resolved === "light" ? 1 : 0.45} />
+      </div>
       <header className="flex items-center justify-between px-5 py-5 sm:px-10 lg:px-14 lg:py-8">
         <div className="flex items-center gap-3"><LogoMark className="size-9" /><Wordmark /></div>
         <ThemeMenu />
@@ -53,11 +63,28 @@ export function Login() {
       <div className="mx-auto grid w-full max-w-[72rem] flex-1 items-center gap-10 px-5 pb-10 sm:px-10 lg:grid-cols-[minmax(0,1fr)_26.5rem] lg:gap-20 lg:px-14 lg:pb-16">
         {/* branding: quiet, desktop only — on phones the form comes first */}
         <section aria-label="About Prospectus" className="hidden max-w-lg lg:block">
+          <div className="relative mb-6 overflow-hidden rounded-2xl border border-line bg-surface/60 p-1 shadow-soft">
+            <ChromaWaves
+              backgroundColor={"#ffffff"}
+              color="#2563eb"
+              waveFrequency={0.2}
+              waveAmplitude={0.3}
+              distortion={1.2}
+              chromaShift={0.2}
+              noiseLevel={0}
+              className="h-32 w-full rounded-xl"
+            >
+              <div className="flex h-full flex-col justify-end p-3.5 text-fg">
+                <span className="text-[0.6875rem] font-semibold tracking-wider text-accent-text uppercase">Academic Progression</span>
+                <span className="text-xs font-medium text-fg-2">Structured syllabus tracking &amp; deadline intelligence</span>
+              </div>
+            </ChromaWaves>
+          </div>
           <p className="text-sm font-medium text-accent-text">Course progression tracker</p>
-          <p className="mt-4 text-[2.5rem] font-semibold leading-[1.1] tracking-tight text-fg">Know every subject will be taught before its exam.</p>
-          <p className="mt-5 text-base leading-relaxed text-fg-muted">Prospectus measures the syllabus still to cover against the teaching time the timetable and academic calendar actually leave.</p>
+          <p className="mt-2 text-[2.5rem] font-semibold leading-[1.1] tracking-tight text-fg">Know every subject will be taught before its exam.</p>
+          <p className="mt-4 text-base leading-relaxed text-fg-muted">Prospectus measures the syllabus still to cover against the teaching time the timetable and academic calendar actually leave.</p>
           <SemesterRule />
-          <p className="mt-8 text-xs text-fg-subtle">Mirai School of Technology</p>
+          <p className="mt-6 text-xs text-fg-subtle">Mirai School of Technology</p>
         </section>
 
         <main className="w-full max-w-[26.5rem] justify-self-center lg:justify-self-end">

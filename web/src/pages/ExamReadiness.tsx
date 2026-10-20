@@ -67,7 +67,7 @@ export function ExamReadiness() {
           Readiness compares the syllabus hours still to cover with the scheduled teaching hours left before the exam starts (holidays, exam weeks and cancelled classes respected). It is a capacity check, not a prediction of marks, and it never invents a score.
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-fg-subtle">Buffer ratio:</span>
+          <span className="text-xs font-medium text-fg-subtle">Time cushion:</span>
           <Badge tone="good">≥ 1.15 Healthy</Badge>
           <Badge tone="warn">1.00–1.14 Tight</Badge>
           <Badge tone="danger">&lt; 1.00 Deficit</Badge>

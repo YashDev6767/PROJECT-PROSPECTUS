@@ -1,6 +1,6 @@
 import type { APIRequestContext, Page } from "@playwright/test";
 
-const admin = { "X-Demo-Role": "admin" };
+const admin = { "X-Demo-Role": "admin", "X-Demo-Campus": "*" };
 export interface E2EData { facultyId: string; subjectId: string }
 
 /**
@@ -8,13 +8,13 @@ export interface E2EData { facultyId: string; subjectId: string }
  * subject (2 topics x 2 h) and a Monday 09:00-10:00 class. Created through the API, idempotently.
  */
 export async function ensureE2EData(request: APIRequestContext): Promise<E2EData> {
-  const sems = await (await request.get("/api/semesters?campusId=ratnam")).json() as { semesters: Array<{ id: string; name: string }> };
+  const sems = await (await request.get("/api/semesters?campusId=ratnam", { headers: admin })).json() as { semesters: Array<{ id: string; name: string }> };
   let sem = sems.semesters.find((s) => s.name === "E2E Spring");
   if (!sem) {
     const r = await request.post("/api/semesters", { headers: admin, data: { name: "E2E Spring", academicYear: "2025-26", track: "UNIVERSITY", campusId: "ratnam", startsOn: "2026-01-05", endsOn: "2026-05-29", saturdayRule: "NONE" } });
     sem = await r.json() as { id: string; name: string };
   }
-  const subjects = await (await request.get(`/api/subjects?semesterId=${sem.id}`)).json() as { subjects: Array<{ id: string; facultyId: string }> };
+  const subjects = await (await request.get(`/api/subjects?semesterId=${sem.id}`, { headers: admin })).json() as { subjects: Array<{ id: string; facultyId: string }> };
   if (subjects.subjects[0]) return { facultyId: subjects.subjects[0].facultyId, subjectId: subjects.subjects[0].id };
   const post = async (path: string, data: object, method: "post" | "put" = "post") => (await (await request[method](path, { headers: admin, data })).json()) as { id: string };
   const batch = await post("/api/batches", { name: "E2E Batch", semesterId: sem.id });

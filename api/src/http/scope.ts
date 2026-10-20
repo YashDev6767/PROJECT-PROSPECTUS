@@ -7,7 +7,8 @@
  *   campus_manager  the account's configured `campusIds` — none configured = no access (fail closed)
  *   faculty         the campus of the faculty record the account is linked to (looked up in the database)
  *   student         the campus of the batch the account is linked to (looked up in the database)
- *   demo headers    development only: `X-Demo-Campus` if sent, otherwise all (demo headers are spoofable by design and off in production)
+ *   demo headers    development only: `X-Demo-Campus` (a list, or "*" for an explicit all-campus preview), otherwise ONE configured default campus (DEMO_DEFAULT_CAMPUS);
+ *                   spoofable by design and ignored in production
  * An empty scope can read and write nothing: the request gate answers 403 `no_campus_assigned` before any route runs.
  *
  * Routes use three helpers, chosen by what the request names:
@@ -28,14 +29,20 @@ export const NO_CAMPUSES: Scope = { all: false, campuses: new Set() };
 const only = (ids: Iterable<string>): Scope => ({ all: false, campuses: new Set([...ids].filter((c) => knownCampusIds.includes(c))) });
 export const isEmpty = (s: Scope) => !s.all && s.campuses.size === 0;
 
-interface ScopeInput { role: DemoRole; source: "session" | "demo"; campusIds: string[] | null; facultyId: string | null; batchId: string | null; demoCampusHeader?: string | undefined }
+interface ScopeInput { role: DemoRole; source: "session" | "demo"; campusIds: string[] | null; facultyId: string | null; batchId: string | null; demoCampusHeader?: string | undefined; demoDefaultCampus?: string | undefined }
+
+/** Scope of a development demo caller (with or without a role): the campuses named in X-Demo-Campus; "*" is an explicit, visible opt-in to all campuses; with no header, exactly the configured single default campus. Never "all" by omission. */
+export function demoScope(header: string | undefined, defaultCampus: string | undefined): Scope {
+  const h = header?.trim();
+  if (h === "*") return ALL_CAMPUSES;
+  if (h) return only(h.split(",").map((s) => s.trim()));
+  const d = defaultCampus ?? knownCampusIds[0]!;
+  return d === "*" ? ALL_CAMPUSES : only([d]); // "*" can only come from test code: loadEnv() accepts a single known campus id only
+}
 
 /** Resolves the caller's campus scope from trusted data. Unknown, missing or unresolvable membership yields an EMPTY scope. */
 export async function resolveScope(prisma: PrismaClient | null, i: ScopeInput): Promise<Scope> {
-  if (i.source === "demo") {
-    if (i.demoCampusHeader === undefined || i.demoCampusHeader.trim() === "") return ALL_CAMPUSES; // development convenience; the whole demo mode is spoofable and disabled in production
-    return only(i.demoCampusHeader.split(",").map((s) => s.trim()));
-  }
+  if (i.source === "demo") return demoScope(i.demoCampusHeader, i.demoDefaultCampus); // development only; spoofable by design and never honoured in production
   if (i.role === "admin") return i.campusIds === null ? ALL_CAMPUSES : only(i.campusIds);
   if (i.role === "campus_manager") return i.campusIds === null ? NO_CAMPUSES : only(i.campusIds);
   if (!prisma) return NO_CAMPUSES;
@@ -50,7 +57,7 @@ export async function resolveScope(prisma: PrismaClient | null, i: ScopeInput): 
 export const scopeOf = (res: Response): Scope => {
   const id = res.locals.identity as { scope?: Scope } | undefined;
   if (id?.scope) return id.scope;
-  return (res.req as Request).app.locals.allowDemoHeaders === false ? NO_CAMPUSES : ALL_CAMPUSES; // anonymous reads exist only in development demo mode
+  return (res.locals.demoScope as Scope | undefined) ?? NO_CAMPUSES; // anonymous development callers get the demo scope (a single campus); production anonymous callers never reach a route
 };
 export const inScope = (scope: Scope, campusId: string | null | undefined) => campusId != null && (scope.all || scope.campuses.has(campusId));
 
@@ -85,4 +92,48 @@ export function defaultCampus(res: Response, requested: string | undefined): str
   if (s.all) return undefined;
   if (s.campuses.size === 1) return [...s.campuses][0];
   return { error: new HttpError(400, "validation_failed", "The request has invalid fields", { issues: [{ path: "campusId", message: "Choose a campus" }] }) };
+}
+
+/* ------------------------------------------------------------------------------------------------------------------------------
+ * Audience (batch / assignment level) isolation, applied ON TOP of the campus scope.
+ *   campus manager / admin  no audience restriction beyond their campuses (they oversee every batch of an authorised campus)
+ *   faculty                 only the subjects assigned to the faculty member the account is linked to (Subject.facultyId), and therefore only
+ *                           the batches, timetable, exams, syllabi, logs and progression that belong to those subjects
+ *   student                 only the batch the account is linked to
+ * A faculty/student caller without a resolvable link sees NOTHING (an id that matches no row), never everything.
+ * The builders return Prisma `where` fragments so the restriction is part of the database query, including relation counts and aggregates.
+ * ---------------------------------------------------------------------------------------------------------------------------- */
+import type { Prisma } from "@prisma/client";
+
+export type Audience = { kind: "all" } | { kind: "faculty"; facultyId: string } | { kind: "student"; batchId: string };
+const NOTHING = "__no_such_id__"; // matches no row (must be a valid Postgres string: no NUL bytes)
+
+export function audienceOf(res: Response): Audience {
+  const id = res.locals.identity as { role?: DemoRole; facultyId?: string | null; batchId?: string | null } | undefined;
+  if (id?.role === "faculty") return { kind: "faculty", facultyId: id.facultyId || NOTHING };
+  if (id?.role === "student") return { kind: "student", batchId: id.batchId || NOTHING };
+  return { kind: "all" };
+}
+export const isRestricted = (a: Audience) => a.kind !== "all";
+
+export const subjectAudience = (a: Audience): Prisma.SubjectWhereInput | undefined =>
+  a.kind === "faculty" ? { facultyId: a.facultyId } : a.kind === "student" ? { batchId: a.batchId } : undefined;
+export const batchAudience = (a: Audience): Prisma.BatchWhereInput | undefined =>
+  a.kind === "faculty" ? { subjects: { some: { facultyId: a.facultyId } } } : a.kind === "student" ? { id: a.batchId } : undefined;
+export const semesterAudience = (a: Audience): Prisma.SemesterWhereInput | undefined =>
+  a.kind === "faculty" ? { batches: { some: { subjects: { some: { facultyId: a.facultyId } } } } } : a.kind === "student" ? { batches: { some: { id: a.batchId } } } : undefined;
+/** An exam applies to a batch (batch-scoped) or to every batch of its semester (cohort-wide). */
+export const examAudience = (a: Audience): Prisma.ExamWhereInput | undefined =>
+  a.kind === "faculty" ? { OR: [{ batchId: null, semester: { batches: { some: { subjects: { some: { facultyId: a.facultyId } } } } } }, { batch: { subjects: { some: { facultyId: a.facultyId } } } }] }
+    : a.kind === "student" ? { OR: [{ batchId: null, semester: { batches: { some: { id: a.batchId } } } }, { batchId: a.batchId }] } : undefined;
+export const facultyAudience = (a: Audience): Prisma.FacultyWhereInput | undefined =>
+  a.kind === "faculty" ? { id: a.facultyId } : a.kind === "student" ? { subjects: { some: { batchId: a.batchId } } } : undefined;
+
+/** AND-combine optional fragments (undefined parts are dropped). */
+export const and = <T>(...parts: Array<T | undefined>): { AND: T[] } => ({ AND: parts.filter((p): p is T => p !== undefined) });
+
+/** A subject (or anything carrying its facultyId/batchId) reached by id: outside the audience it behaves like a missing record. */
+export function hideUnlessAudience(res: Response, subject: { facultyId: string | null; batchId: string }, what: string): void {
+  const a = audienceOf(res);
+  if ((a.kind === "faculty" && subject.facultyId !== a.facultyId) || (a.kind === "student" && subject.batchId !== a.batchId)) throw notFound(what);
 }

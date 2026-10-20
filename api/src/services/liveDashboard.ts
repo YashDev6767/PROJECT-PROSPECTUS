@@ -1,5 +1,5 @@
 /** Dashboard computed from persisted timetable, session logs, syllabus and exams — no demo numbers. */
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { campuses } from "../data/campuses.js";
 import { timeInZone } from "../domain/clock.js";
 import { daysBetweenISO as daysBetween, type ISODate } from "../domain/dates.js";
@@ -16,14 +16,17 @@ import type { Settings } from "./settings.js";
 const trackNames = { MIRAI: "Mirai", UNIVERSITY: "University" } as const;
 
 /** Returns null when the campus has no semesters at all, so the caller can fall back to the labelled demo dataset. */
-export async function buildLiveDashboard(prisma: PrismaClient, campusId: string, now: Date, today: ISODate, settings: Settings): Promise<Dashboard | null> {
+export interface DashboardAudience { subject?: Prisma.SubjectWhereInput | undefined; exam?: Prisma.ExamWhereInput | undefined; facultyId?: string | undefined; batchId?: string | undefined }
+
+/** `audience` narrows EVERYTHING that is computed — risk list, totals, roll-up, schedule, exams, recent sessions — to what a faculty member / student may see. */
+export async function buildLiveDashboard(prisma: PrismaClient, campusId: string, now: Date, today: ISODate, settings: Settings, audience: DashboardAudience = {}): Promise<Dashboard | null> {
   const campus = campuses.find((c) => c.id === campusId);
   if (!campus) return null;
   if ((await prisma.semester.count({ where: { campusId } })) === 0) return null;
 
   const active = await prisma.semester.findMany({ where: { campusId, isActive: true, startsOn: { lte: dbDate(today) }, endsOn: { gte: dbDate(today) } } });
   const semesterIds = active.map((s) => s.id);
-  const contexts = await loadSubjectContexts(prisma, { batch: { semesterId: { in: semesterIds } } });
+  const contexts = await loadSubjectContexts(prisma, { AND: [{ batch: { semesterId: { in: semesterIds } } }, ...(audience.subject ? [audience.subject] : [])] });
   const results = contexts.map((c) => computeSubjectResult(c, today, settings));
   const roll = rollup(results);
 
@@ -43,15 +46,15 @@ export async function buildLiveDashboard(prisma: PrismaClient, campusId: string,
       remainingHours: r.progress.remainingHours, availableHours: r.progress.availableHours, deadline: r.deadline.date,
     }));
 
-  const { items } = await sessionsInRange(prisma, { from: today, to: today, campusId });
+  const { items } = await sessionsInRange(prisma, { from: today, to: today, campusId, facultyId: audience.facultyId, batchId: audience.batchId });
   const nowTime = timeInZone(now, settings.timeZone);
   const schedule = items.map((i) => ({
     id: i.key, subject: i.subjectName, code: i.batchName, start: i.startTime, end: i.endTime, room: i.room ?? "—", subjectId: i.subjectId,
     state: i.log ? ("logged" as const) : i.endTime <= nowTime ? ("needs_log" as const) : ("upcoming" as const), ...(i.log ? { outcome: i.log.outcome } : {}),
   }));
 
-  const exams = await prisma.exam.findMany({ where: { semester: { campusId, id: { in: semesterIds } }, startsOn: { gte: dbDate(today) } }, include: { semester: true, batch: true }, orderBy: { startsOn: "asc" }, take: 6 });
-  const recent = await prisma.sessionLog.findMany({ where: { subject: { batch: { semester: { campusId } } }, heldOn: { lte: dbDate(today) } }, include: logInclude, orderBy: [{ heldOn: "desc" }, { createdAt: "desc" }], take: 5 });
+  const exams = await prisma.exam.findMany({ where: { AND: [{ semester: { campusId, id: { in: semesterIds } }, startsOn: { gte: dbDate(today) } }, ...(audience.exam ? [audience.exam] : [])] }, include: { semester: true, batch: true }, orderBy: { startsOn: "asc" }, take: 6 });
+  const recent = await prisma.sessionLog.findMany({ where: { subject: { AND: [{ batch: { semester: { campusId } } }, ...(audience.subject ? [audience.subject] : [])] }, heldOn: { lte: dbDate(today) } }, include: logInclude, orderBy: [{ heldOn: "desc" }, { createdAt: "desc" }], take: 5 });
 
   const unassessed = results.filter((r) => r.progress.risk === "UNKNOWN").length;
   const state: DashboardState = await (async () => {

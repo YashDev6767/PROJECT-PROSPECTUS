@@ -3,7 +3,7 @@ import { asyncHandler, needDb, parse } from "../http/errors.js";
 import { progressionQuery } from "../http/schemas.js";
 import { buildExamReadiness } from "../services/examReadiness.js";
 import type { Deps } from "./deps.js";
-import { assertCampus } from "../http/scope.js";
+import { assertCampus, audienceOf, examAudience, semesterAudience, subjectAudience } from "../http/scope.js";
 
 export function examReadinessRouter({ db, settings, today }: Deps): Router {
   const r = Router();
@@ -12,7 +12,8 @@ export function examReadinessRouter({ db, settings, today }: Deps): Router {
     const q = parse(progressionQuery, req.query);
     assertCampus(res, q.campusId);
     const prisma = needDb(db);
-    res.json(await buildExamReadiness(prisma, { campusId: q.campusId, track: q.track, semesterId: q.semesterId, asOf: q.asOf ?? today() }, settings));
+    const aud = audienceOf(res); // faculty see readiness only for their own subjects; students only for their batch
+    res.json(await buildExamReadiness(prisma, { campusId: q.campusId, track: q.track, semesterId: q.semesterId, asOf: q.asOf ?? today(), audience: { subject: subjectAudience(aud), exam: examAudience(aud), semester: semesterAudience(aud) } }, settings));
   }));
   return r;
 }

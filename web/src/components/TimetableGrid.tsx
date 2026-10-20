@@ -10,7 +10,7 @@ export const HOUR_PX = 128;
 const COMPACT_BELOW = 60; // px: cards shorter than this show a single line
 const TIME_COL = "4.25rem";
 
-const hueOf = (key: string) => { let h = 0; for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) % 360; return [212, 262, 190, 322, 28, 160][h % 6]!; };
+const hueOf = (key: string) => { let h = 0; for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) % 360; return [215, 200, 185, 225, 38, 160][h % 6]!; };
 
 export interface DayInfo { day?: CalendarDay; note?: string; outsideSemester?: boolean }
 

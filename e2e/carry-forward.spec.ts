@@ -4,7 +4,7 @@ test.skip(!process.env.TEST_DATABASE_URL, "needs TEST_DATABASE_URL (see README: 
 
 // Uses its own disposable semester, batch and subject (on another campus than the shared "E2E Spring" data), so it cannot change what the other specs find.
 test("faculty logging: unfinished work from the previous session is offered, selectable, and saved without duplicates", async ({ page, request }) => {
-  const admin = { "X-Demo-Role": "admin" };
+  const admin = { "X-Demo-Role": "admin", "X-Demo-Campus": "*" };
   const post = async (path: string, data: object) => (await (await request.post(path, { headers: admin, data })).json()) as { id: string };
   const sem = await post("/api/semesters", { name: "CF Spring", academicYear: "2025-26", track: "MIRAI", campusId: "rgib", startsOn: "2026-01-05", endsOn: "2026-05-29", saturdayRule: "NONE", confirmOverlap: true });
   const batch = await post("/api/batches", { name: "CF Batch", semesterId: sem.id });
@@ -49,6 +49,6 @@ test("faculty logging: unfinished work from the previous session is offered, sel
   const retry = await request.post("/api/session-logs", { headers: admin, data: { subjectId: subject.id, heldOn: "2026-03-23", timetableEntryId: slot.id, outcome: "IN_PROGRESS", covered: [{ topicId: beta, completionPct: 100 }] } });
   expect(retry.status()).toBe(409);
   // progression: Alpha 2 h + Beta 2 h of 6 h
-  const p = (await (await request.get(`/api/progression/subjects/${subject.id}`)).json()) as { progress: { coveragePct: number; coveredHours: number } };
+  const p = (await (await request.get(`/api/progression/subjects/${subject.id}`, { headers: admin })).json()) as { progress: { coveragePct: number; coveredHours: number } };
   expect(p.progress).toMatchObject({ coveragePct: 66.67, coveredHours: 4 });
 });

@@ -42,7 +42,7 @@ test("sample subjects explain their status and the dashboard is live", async ({ 
   await page.goto("/subjects");
   await page.getByRole("link", { name: /Progress details for/ }).first().click();
   await expect(page.getByRole("region", { name: "Why this status" })).toBeVisible();
-  await expect(page.getByRole("list", { name: "Progress numbers" })).toContainText("Buffer ratio");
+  await expect(page.getByRole("list", { name: "Progress numbers" })).toContainText("Time cushion");
 
   await page.goto("/");
   await expect(page.getByText("Live data")).toBeVisible();

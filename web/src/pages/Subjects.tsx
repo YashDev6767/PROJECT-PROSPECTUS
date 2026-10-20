@@ -95,7 +95,7 @@ export function Subjects() {
                     <td className={`${tableClasses.td} whitespace-nowrap`}>
                       <Link to={`/subjects/${s.id}`} className="block" aria-label={`Progress details for ${s.name}, ${s.batchName}: ${s.progress.headline}`}>
                         <RiskBadge status={s.progress.risk} />
-                        <p className="mt-1 text-xs tabular-nums text-fg-subtle">{s.progress.coveragePct === null ? "no syllabus" : `${s.progress.coveragePct}% · buffer ${s.progress.bufferRatio === null ? "—" : s.progress.bufferRatio.toFixed(2)}`}</p>
+                        <p className="mt-1 text-xs tabular-nums text-fg-subtle">{s.progress.coveragePct === null ? "no syllabus" : `${s.progress.coveragePct}% · cushion ${s.progress.bufferRatio === null ? "—" : s.progress.bufferRatio.toFixed(2)}`}</p>
                       </Link>
                     </td>
                     <td className={`${tableClasses.td} whitespace-nowrap tabular-nums`}>

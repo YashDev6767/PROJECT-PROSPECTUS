@@ -4,7 +4,8 @@ import { findSemesterOverlaps, semesterStatus } from "../domain/semesters.js";
 import { asyncHandler, failOnIssues, HttpError, inUse, needDb, needsConfirmation, notFound, parse, requireCapability } from "../http/errors.js";
 import { campusId, confirmBody, semesterCreate, semesterIssues, semesterUpdate, track } from "../http/schemas.js";
 import { dbDate, iso } from "../services/format.js";
-import { assertCampus, campusWhere, hideOutOfScope } from "../http/scope.js";
+import type { Prisma } from "@prisma/client";
+import { and, assertCampus, audienceOf, batchAudience, campusWhere, examAudience, hideOutOfScope, semesterAudience } from "../http/scope.js";
 import type { Deps } from "./deps.js";
 
 type Row = { id: string; name: string; academicYear: string; track: "MIRAI" | "UNIVERSITY"; campusId: string; startsOn: Date; endsOn: Date; saturdayRule: "ALL" | "NONE" | "SECOND_FOURTH"; isActive: boolean; isSample: boolean; _count?: { batches: number; exams: number } };
@@ -28,7 +29,12 @@ export function semestersRouter({ db, today: todayFn }: Deps): Router {
   r.get("/semesters", asyncHandler(async (req, res) => {
     const q = parse(z.object({ campusId: campusId.optional(), track: track.optional() }), req.query);
     const prisma = needDb(db);
-    const rows = await prisma.semester.findMany({ where: { campusId: campusWhere(res, q.campusId), track: q.track }, orderBy: [{ startsOn: "desc" }, { name: "asc" }], include: counts });
+    const aud = audienceOf(res);
+    const rows = await prisma.semester.findMany({
+      where: and<Prisma.SemesterWhereInput>({ campusId: campusWhere(res, q.campusId), track: q.track }, semesterAudience(aud)),
+      orderBy: [{ startsOn: "desc" }, { name: "asc" }],
+      include: { _count: { select: { batches: { where: batchAudience(aud) ?? {} }, exams: { where: examAudience(aud) ?? {} } } } }, // counts never include what the caller may not see
+    });
     res.json({ semesters: rows.map((s) => serializeSemester(s, today())) });
   }));
 

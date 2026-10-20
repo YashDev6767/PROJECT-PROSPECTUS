@@ -206,15 +206,15 @@ describe("recalculation after timetable changes", () => {
 });
 
 describe("classification boundaries and configurable thresholds", () => {
-  it("uses the documented defaults at the edges", () => {
+  it("uses the documented defaults at the edges and compares unrounded available vs required hours", () => {
     expect(classify(10, 11.5, 16, { onTrack: 1.15, tight: 1 }).risk).toBe("ON_TRACK"); // 1.15
     expect(classify(10, 11.4, 16, { onTrack: 1.15, tight: 1 }).risk).toBe("TIGHT"); // 1.14
     expect(classify(10, 10, 16, { onTrack: 1.15, tight: 1 })).toEqual({ risk: "TIGHT", ratio: 1 });
-    expect(classify(10, 9.99, 16, { onTrack: 1.15, tight: 1 }).risk).toBe("TIGHT"); // 0.999 rounds to 1.00
+    // Regression test: 9.99 / 10 is 0.999 (unrounded available < required) -> DANGER, displaying rounded ratio 1.00
+    expect(classify(10, 9.99, 16, { onTrack: 1.15, tight: 1 })).toEqual({ risk: "DANGER", ratio: 1 });
     expect(classify(10, 9.9, 16, { onTrack: 1.15, tight: 1 }).risk).toBe("DANGER"); // 0.99
-  });
-  it("classifies on the rounded ratio, so 1.1499 displays and classifies as 1.15", () => {
-    expect(classify(10, 11.499, 16, { onTrack: 1.15, tight: 1 })).toEqual({ risk: "ON_TRACK", ratio: 1.15 });
+    // Boundary test: 11.499 / 10 = 1.1499 < 1.15 -> TIGHT, displaying rounded ratio 1.15
+    expect(classify(10, 11.499, 16, { onTrack: 1.15, tight: 1 })).toEqual({ risk: "TIGHT", ratio: 1.15 });
   });
   it("honours custom thresholds", () => {
     const strict: Thresholds = { onTrack: 1.3, tight: 1.1 };

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Download, Info, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Badge, Button, Card, EmptyState, PageHeader, SampleBadge, tableClasses } from "../components/ui";
@@ -63,7 +64,7 @@ export function Exams() {
           {sem && <Button onClick={() => void downloadCsv(`/api/exams/export.csv?semesterId=${sem.id}`, "exams.csv")}><Download className="size-4" aria-hidden /> Export CSV</Button>}
           {writable && sem && <Button variant="primary" onClick={() => setEditing("new")}><Plus className="size-4" aria-hidden /> Schedule exam</Button>}
         </>} />
-      <p className="flex items-start gap-2 text-sm text-fg-subtle"><Info className="mt-0.5 size-4 shrink-0" aria-hidden /> This page only schedules exams. Exam readiness (comparing syllabus coverage against these dates) is not built yet — it arrives in Phase 4.</p>
+      <p className="flex items-start gap-2 text-sm text-fg-subtle"><Info className="mt-0.5 size-4 shrink-0" aria-hidden /> <span>This page schedules exams. To see whether each subject will be ready in time, open <Link to="/exam-readiness" className="inline-flex min-h-10 items-center font-medium text-accent-text underline">Exam Readiness</Link>.</span></p>
 
       <Boundary res={choice.res} lines={2}>{() => choice.semesters.length === 0 ? <Card><NoSemesters /></Card> : (
         <>
@@ -72,15 +73,15 @@ export function Exams() {
             <Card><EmptyState icon={ShieldCheck} title="No exams scheduled for this semester">{writable ? 'Use "Schedule exam" to add sessionals, a mid-term, the PUT and the end-term.' : "Exam dates will appear here once they are scheduled."}</EmptyState></Card>
           ) : (
             <div className={tableClasses.wrap}>
-              <table className={tableClasses.table}>
-                <thead><tr>{["Exam", "Type", "Dates", "Scope", "Notes", ...(writable ? ["Actions"] : [])].map((h) => <th key={h} scope="col" className={tableClasses.th}>{h}</th>)}</tr></thead>
+              <table className={tableClasses.tableFit}>
+                <thead><tr>{["Exam", "Type", "Dates", "Scope", "Notes", ...(writable ? ["Actions"] : [])].map((h) => <th key={h} scope="col" className={`${tableClasses.th}${["Type", "Dates", "Scope", "Notes"].includes(h) ? " hidden md:table-cell" : ""}`}>{h}</th>)}</tr></thead>
                 <tbody>{exams.map((e) => (
                   <tr key={e.id}>
-                    <td className={tableClasses.td}><span className="flex items-center gap-2 font-semibold text-fg">{e.name} {e.isSample && <SampleBadge />}</span></td>
-                    <td className={tableClasses.td}><Badge tone={typeTone[e.type]}>{examTypeLabels[e.type]}</Badge></td>
-                    <td className={`${tableClasses.td} whitespace-nowrap`}>{dateRange(e.startsOn, e.endsOn)}</td>
-                    <td className={tableClasses.td}>{e.batchName ?? "Whole cohort"}</td>
-                    <td className={`${tableClasses.td} max-w-56 truncate text-fg-muted`}>{e.notes ?? "—"}</td>
+                    <td className={tableClasses.td}><span className="flex items-center gap-2 font-semibold text-fg">{e.name} {e.isSample && <SampleBadge />}</span><span className="mt-0.5 block text-xs text-fg-subtle md:hidden">{examTypeLabels[e.type]} · {dateRange(e.startsOn, e.endsOn)} · {e.batchName ?? "Whole cohort"}</span></td>
+                    <td className={`${tableClasses.td} hidden md:table-cell`}><Badge tone={typeTone[e.type]}>{examTypeLabels[e.type]}</Badge></td>
+                    <td className={`${tableClasses.td} hidden whitespace-nowrap md:table-cell`}>{dateRange(e.startsOn, e.endsOn)}</td>
+                    <td className={`${tableClasses.td} hidden md:table-cell`}>{e.batchName ?? "Whole cohort"}</td>
+                    <td className={`${tableClasses.td} hidden max-w-56 truncate text-fg-muted md:table-cell`}>{e.notes ?? "—"}</td>
                     {writable && <td className={tableClasses.td}><div className="flex gap-1.5">
                       <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9" aria-label={`Edit ${e.name}`} onClick={() => setEditing(e)}><Pencil className="size-4" aria-hidden /> Edit</Button>
                       <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9 text-danger hover:text-danger" aria-label={`Delete ${e.name}`} onClick={() => setDeleting(e)}><Trash2 className="size-4" aria-hidden /></Button>

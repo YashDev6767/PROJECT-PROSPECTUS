@@ -163,8 +163,8 @@ export function Overview() {
             {d.state && d.state.unassessed > 0 && <p role="status" className="flex items-start gap-2 text-sm text-warn"><CircleHelp className="mt-0.5 size-4 shrink-0" aria-hidden /> {d.state.message}</p>}
             <StatStrip label="Key metrics">
               <Stat label="Syllabus covered" value={`${d.metrics.overallCoveragePct}%`} hint="Covered vs total planned hours" />
-              <Stat label="Hours behind plan" value={hours(d.metrics.hoursBehind)} hint="Across all subjects" />
-              <Stat label={live ? "Subjects tight or in danger" : "Subjects at risk"} value={String(d.metrics.subjectsAtRisk)} hint={live ? "Buffer below 1.15" : `of ${d.atRisk.length + d.exams.filter((e) => e.risk === "on_track").length} this semester`} />
+              <Stat label="Hours behind" value={hours(d.metrics.hoursBehind)} hint="Taught vs where the plan says we should be" />
+              <Stat label={live ? "Subjects needing attention" : "Subjects at risk"} value={String(d.metrics.subjectsAtRisk)} hint={live ? "Running tight or behind" : `of ${d.atRisk.length + d.exams.filter((e) => e.risk === "on_track").length} this semester`} />
               <Stat label="Next exam" value={d.metrics.nextExamInDays === null ? "—" : daysLabel(d.metrics.nextExamInDays)} hint={d.exams[0] ? d.exams[0].name : "None scheduled"} />
             </StatStrip>
 

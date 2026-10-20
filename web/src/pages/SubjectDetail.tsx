@@ -85,7 +85,7 @@ export function SubjectDetail() {
                 <Stat label="Covered" value={hours(p.coveredHours)} hint={p.coveragePct === null ? "No syllabus" : `${p.coveragePct.toFixed(2)}% of scope`} />
                 <Stat label="Remaining" value={hours(p.remainingHours)} />
                 <Stat label="Available until deadline" value={p.availableHours === null ? "—" : hours(p.availableHours)} hint={`${p.remainingSessions} session(s) left · last class ${shortDate(d.deadline.lastTeachingDate)}`} />
-                <Stat label="Buffer ratio" value={p.bufferRatio === null ? "—" : p.bufferRatio.toFixed(2)} hint="available ÷ remaining" tone={p.risk === "DANGER" ? "danger" : p.risk === "TIGHT" ? "warn" : undefined} />
+                <Stat label="Time cushion" value={p.bufferRatio === null ? "—" : p.bufferRatio.toFixed(2)} hint="teaching time left ÷ syllabus left" tone={p.risk === "DANGER" ? "danger" : p.risk === "TIGHT" ? "warn" : undefined} />
                 <Stat label="Pace vs plan" value={signed(p.paceHours)} hint={`${hours(p.plannedToDateHours)} planned by ${shortDate(d.referenceDate)}`} tone={p.paceHours < 0 ? "warn" : "good"} />
                 <Stat label="Projected completion" value={p.projectedCompletion ? shortDate(p.projectedCompletion) : p.risk === "COMPLETE" ? "Done" : "Not reachable"} hint={p.projectionNote || `Deadline: ${d.deadline.label}`} />
                 <Stat label="Taught so far" value={hours(d.hoursTaught)} hint={d.lastLoggedOn ? `Last logged ${shortDate(d.lastLoggedOn)}` : "Nothing logged yet"} />

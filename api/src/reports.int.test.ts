@@ -38,7 +38,7 @@ suite("Academic Intelligence & Reports API (PostgreSQL)", () => {
     await db.prisma!.$executeRawUnsafe(
       `TRUNCATE "SessionTopicEntry","SessionLogRevision","SessionLog","Exam","CalendarEntry","TimetableEntry","SyllabusTopic","SyllabusUnit","Subject","Batch","Faculty","Semester" RESTART IDENTITY CASCADE`,
     );
-    app = createApp({ CORS_ORIGIN: "http://localhost:5173" }, db, () => clock);
+    app = createApp({ CORS_ORIGIN: "http://localhost:5173", DEMO_DEFAULT_CAMPUS: "*" }, db, () => clock);
 
     // 1. Setup semester and batch on rgib
     ids.sem = (

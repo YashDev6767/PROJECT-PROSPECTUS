@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
 
-/** PROSPECTUS mark: three rising bars (syllabus progress) on an indigo-violet tile. Deliberately not green. */
+/** PROSPECTUS mark: structured academic progression symbol on a graphite to restrained blue tile. */
 export function LogoMark({ className }: { className?: string }) {
   return (
-    <span aria-hidden className={cn("grid size-10 shrink-0 place-items-center rounded-[10px] text-white", className)}
+    <span aria-hidden className={cn("grid size-10 shrink-0 place-items-center rounded-[10px] text-white shadow-sm ring-1 ring-white/10", className)}
       style={{ background: "linear-gradient(145deg, var(--brand-a), var(--brand-b))" }}>
       <svg viewBox="0 0 24 24" className="size-[22px]" fill="none">
         <rect x="4.5" y="13" width="3.4" height="6.5" rx="1.3" fill="currentColor" opacity="0.7" />

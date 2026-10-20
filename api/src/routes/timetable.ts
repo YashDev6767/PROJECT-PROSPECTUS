@@ -6,12 +6,12 @@ import { slotHours } from "../domain/timetable.js";
 import { asyncHandler, failOnIssues, HttpError, inUse, needDb, notFound, parse, requireCapability, validationFailed } from "../http/errors.js";
 import { slotIssues, timetableCreate, timetableUpdate } from "../http/schemas.js";
 import { checkSlotConflicts, slotContextFor } from "../services/timetableData.js";
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { occurrenceKey, occurrencesBetween } from "../domain/schedule.js";
 import { iso } from "../services/format.js";
 import { loadSubjectContexts, teachingContextFor } from "../services/progressionData.js";
 import type { Deps } from "./deps.js";
-import { campusWhere, hideOutOfScope, inScope, scopeOf } from "../http/scope.js";
+import { and, audienceOf, campusWhere, hideOutOfScope, inScope, scopeOf, subjectAudience } from "../http/scope.js";
 
 const include = { subject: { include: { batch: { include: { semester: true } }, faculty: true } } } as const;
 type Row = { id: string; weekday: number; startTime: string; endTime: string; room: string | null; subject: { id: string; code: string; name: string; isSample: boolean; batchId: string; facultyId: string | null; batch: { name: string }; faculty: { name: string } | null } };
@@ -48,7 +48,7 @@ async function withPlanning(prisma: PrismaClient, entries: Row[], todayIso: stri
 export function timetableRouter({ db, today }: Deps): Router {
   const r = Router();
   const query = z.object({ semesterId: z.string().max(64).optional(), batchId: z.string().max(64).optional(), facultyId: z.string().max(64).optional() });
-  const where = (res: Response, q: z.infer<typeof query>) => ({ subject: { facultyId: q.facultyId, batchId: q.batchId, batch: { semesterId: q.semesterId, semester: { campusId: campusWhere(res) } } } });
+  const where = (res: Response, q: z.infer<typeof query>): Prisma.TimetableEntryWhereInput => ({ subject: and<Prisma.SubjectWhereInput>({ facultyId: q.facultyId, batchId: q.batchId, batch: { semesterId: q.semesterId, semester: { campusId: campusWhere(res) } } }, subjectAudience(audienceOf(res))) });
   const order = [{ weekday: "asc" as const }, { startTime: "asc" as const }];
 
   r.get("/timetable", asyncHandler(async (req, res) => {

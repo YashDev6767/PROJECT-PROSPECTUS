@@ -32,7 +32,7 @@ suite("student portal: scoping, read-only and correctness (PostgreSQL)", () => {
     execSync("npx prisma migrate deploy", { cwd: fileURLToPath(new URL("..", import.meta.url)), env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" });
     db = createDatabase(url);
     await db.prisma!.$executeRawUnsafe(`TRUNCATE "SessionTopicEntry","SessionLogRevision","SessionLog","Exam","CalendarEntry","TimetableEntry","SyllabusTopic","SyllabusUnit","Subject","Batch","Faculty","Semester" RESTART IDENTITY CASCADE`);
-    dev = createApp({ CORS_ORIGIN: "http://localhost:5173" }, db, () => clock);
+    dev = createApp({ CORS_ORIGIN: "http://localhost:5173", DEMO_DEFAULT_CAMPUS: "*" }, db, () => clock);
     const post = async (path: string, body: object) => (await admin(request(dev).post(path)).send(body)).body;
     const sem = async (campusId: string, name: string) => { const s = await post("/api/semesters", { name, academicYear: "2026-27", track: "MIRAI", campusId, startsOn: "2026-09-07", endsOn: "2026-12-18", saturdayRule: "NONE" }); await admin(request(dev).post(`/api/semesters/${s.id}/activate`)).send({}); return s.id as string; };
     ids.semA = await sem("rgib", "Sem A"); ids.semZ = await sem("juj", "Sem Z");

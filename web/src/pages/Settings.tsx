@@ -52,13 +52,13 @@ function BatchesTab({ campusId, writable }: { campusId: string; writable: boolea
       {writable && <div className="flex justify-end"><Button variant="primary" onClick={() => setEditing("new")}><Plus className="size-4" aria-hidden /> Add batch</Button></div>}
       <Boundary res={res}>{({ batches }) => batches.length === 0 ? <Card><EmptyState icon={Users} title="No batches yet">{writable ? "Create a semester, then add its batches here." : "No batches have been set up for this campus."}</EmptyState></Card> : (
         <div className={tableClasses.wrap}>
-          <table className={tableClasses.table}>
-            <thead><tr>{["Batch", "Semester", "Track", "Students", "Subjects", ...(writable ? ["Actions"] : [])].map((h) => <th key={h} scope="col" className={tableClasses.th}>{h}</th>)}</tr></thead>
+          <table className={tableClasses.tableFit}>
+            <thead><tr>{["Batch", "Semester", "Track", "Students", "Subjects", ...(writable ? ["Actions"] : [])].map((h) => <th key={h} scope="col" className={`${tableClasses.th}${h === "Actions" || h === "Batch" ? "" : " hidden md:table-cell"}`}>{h}</th>)}</tr></thead>
             <tbody>{batches.map((b) => (
               <tr key={b.id}>
-                <td className={tableClasses.td}><span className="flex items-center gap-2 font-semibold text-fg">{b.name} {b.isSample && <SampleBadge />}</span></td>
-                <td className={tableClasses.td}>{b.semesterName}</td><td className={tableClasses.td}>{trackLabels[b.track]}</td>
-                <td className={`${tableClasses.td} tabular-nums`}>{b.studentCount ?? "—"}</td><td className={`${tableClasses.td} tabular-nums`}>{b.subjectCount}</td>
+                <td className={tableClasses.td}><span className="flex items-center gap-2 font-semibold text-fg">{b.name} {b.isSample && <SampleBadge />}</span><span className="mt-0.5 block text-xs text-fg-subtle md:hidden">{b.semesterName} · {trackLabels[b.track]} · {b.studentCount ?? "—"} students · {b.subjectCount} subjects</span></td>
+                <td className={`${tableClasses.td} hidden md:table-cell`}>{b.semesterName}</td><td className={`${tableClasses.td} hidden md:table-cell`}>{trackLabels[b.track]}</td>
+                <td className={`${tableClasses.td} hidden tabular-nums md:table-cell`}>{b.studentCount ?? "—"}</td><td className={`${tableClasses.td} hidden tabular-nums md:table-cell`}>{b.subjectCount}</td>
                 {writable && <td className={tableClasses.td}><div className="flex gap-1.5">
                   <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9" aria-label={`Edit ${b.name} (${b.semesterName}, ${trackLabels[b.track]})`} onClick={() => setEditing(b)}><Pencil className="size-4" aria-hidden /></Button>
                   <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9 text-danger hover:text-danger" aria-label={`Delete ${b.name} (${b.semesterName}, ${trackLabels[b.track]})`} onClick={() => setDeleting(b)}><Trash2 className="size-4" aria-hidden /></Button>
@@ -107,12 +107,12 @@ function FacultyTab({ campusId, writable }: { campusId: string; writable: boolea
       {writable && <div className="flex justify-end"><Button variant="primary" onClick={() => setEditing("new")}><Plus className="size-4" aria-hidden /> Add faculty</Button></div>}
       <Boundary res={res}>{({ faculty }) => faculty.length === 0 ? <Card><EmptyState icon={Users} title="No faculty records yet">{writable ? 'Use "Add faculty" so subjects and timetable classes can be assigned to people.' : "No faculty have been added for this campus."}</EmptyState></Card> : (
         <div className={tableClasses.wrap}>
-          <table className={tableClasses.table}>
-            <thead><tr>{["Name", "Email", "Subjects", "Weekly hours", ...(writable ? ["Actions"] : [])].map((h) => <th key={h} scope="col" className={tableClasses.th}>{h}</th>)}</tr></thead>
+          <table className={tableClasses.tableFit}>
+            <thead><tr>{["Name", "Email", "Subjects", "Weekly hours", ...(writable ? ["Actions"] : [])].map((h) => <th key={h} scope="col" className={`${tableClasses.th}${h === "Actions" || h === "Name" ? "" : " hidden md:table-cell"}`}>{h}</th>)}</tr></thead>
             <tbody>{faculty.map((f) => (
               <tr key={f.id}>
-                <td className={tableClasses.td}><span className="flex items-center gap-2 font-semibold text-fg">{f.name} {f.isSample && <SampleBadge />}</span></td>
-                <td className={tableClasses.td}>{f.email ?? "—"}</td><td className={`${tableClasses.td} tabular-nums`}>{f.subjectCount}</td><td className={`${tableClasses.td} tabular-nums`}>{hours(f.weeklyHours)}</td>
+                <td className={tableClasses.td}><span className="flex items-center gap-2 font-semibold text-fg">{f.name} {f.isSample && <SampleBadge />}</span><span className="mt-0.5 block text-xs text-fg-subtle md:hidden">{f.email ?? "No email"} · {f.subjectCount} {f.subjectCount === 1 ? "subject" : "subjects"} · {hours(f.weeklyHours)}/week</span></td>
+                <td className={`${tableClasses.td} hidden md:table-cell`}>{f.email ?? "—"}</td><td className={`${tableClasses.td} hidden tabular-nums md:table-cell`}>{f.subjectCount}</td><td className={`${tableClasses.td} hidden tabular-nums md:table-cell`}>{hours(f.weeklyHours)}</td>
                 {writable && <td className={tableClasses.td}><div className="flex gap-1.5">
                   <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9" aria-label={`Edit ${f.name}`} onClick={() => setEditing(f)}><Pencil className="size-4" aria-hidden /></Button>
                   <Button variant="ghost" className="min-h-11 min-w-11 px-2.5 lg:min-h-9 lg:min-w-9 text-danger hover:text-danger" aria-label={`Delete ${f.name}`} onClick={() => setDeleting(f)}><Trash2 className="size-4" aria-hidden /></Button>

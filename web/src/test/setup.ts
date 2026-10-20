@@ -28,3 +28,6 @@ if (typeof window.matchMedia !== "function") {
 class FakeObserver { observe() {} unobserve() {} disconnect() {} takeRecords() { return []; } }
 if (typeof window.IntersectionObserver === "undefined") (window as unknown as { IntersectionObserver: unknown }).IntersectionObserver = FakeObserver;
 if (typeof window.ResizeObserver === "undefined") (window as unknown as { ResizeObserver: unknown }).ResizeObserver = FakeObserver;
+
+// jsdom has no canvas/WebGL: report "no context" quietly (what a browser without WebGL2 does) instead of logging "Not implemented".
+HTMLCanvasElement.prototype.getContext = (() => null) as unknown as typeof HTMLCanvasElement.prototype.getContext;
