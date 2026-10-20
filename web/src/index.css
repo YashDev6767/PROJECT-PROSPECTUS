@@ -40,21 +40,21 @@
   /* charts (validated against --surface) */
   --chart-1: #2563eb; --chart-2: #0e7490; --chart-3: #b45309; --chart-4: #0284c7; --chart-5: #475569;
   /* depth */
-  --sh-soft: 0 1px 2px rgb(15 23 42 / 0.04);
-  --sh-glass: 0 1px 2px rgb(15 23 42 / 0.04);
-  --sh-pop: 0 12px 32px -12px rgb(15 23 42 / 0.22), 0 1px 3px rgb(15 23 42 / 0.06);
+  --sh-soft: 0 1px 3px 0 rgb(15 23 42 / 0.05), 0 1px 2px -1px rgb(15 23 42 / 0.05);
+  --sh-glass: 0 4px 16px -2px rgb(15 23 42 / 0.06), 0 2px 4px -1px rgb(15 23 42 / 0.04);
+  --sh-pop: 0 16px 36px -8px rgb(15 23 42 / 0.18), 0 4px 12px -2px rgb(15 23 42 / 0.06);
   --glow: 0 0 0 0 transparent;
-  --glass-bg: rgb(255 255 255 / 0.88);
+  --glass-bg: rgb(255 255 255 / 0.76);
   --glass-border: var(--line);
   --scrim: rgb(15 23 42 / 0.42);
   --spot: rgb(37 99 235 / 0.08);
   /* atmosphere */
-  --bg-glow-1: rgb(37 99 235 / 0.12);
-  --bg-glow-2: rgb(59 130 246 / 0.08);
-  --bg-glow-3: rgb(56 189 248 / 0.10);
+  --bg-glow-1: rgb(37 99 235 / 0.14);
+  --bg-glow-2: rgb(59 130 246 / 0.09);
+  --bg-glow-3: rgb(56 189 248 / 0.11);
   --bg-sheen: rgb(255 255 255 / 0.6);
   --bg-dots: transparent;
-  --surface-alpha: 84%;
+  --surface-alpha: 76%;
 }
 
 .dark {
@@ -84,20 +84,20 @@
   --danger: #fa9a93; --danger-soft: #38201f; --danger-solid: #b42318; --danger-solid-hover: #cf3a2d;
   --info: #67d4ea; --info-soft: #11292f;
   --chart-1: #60a5fa; --chart-2: #38bdf8; --chart-3: #f0a452; --chart-4: #7dd3fc; --chart-5: #94a3b8;
-  --sh-soft: 0 1px 2px rgb(0 0 0 / 0.35);
-  --sh-glass: 0 1px 2px rgb(0 0 0 / 0.35);
-  --sh-pop: 0 18px 48px -14px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.06);
-  --glow: 0 0 20px -6px rgb(37 99 235 / 0.45); /* used only on the primary action */
-  --glass-bg: rgb(19 22 38 / 0.88);
+  --sh-soft: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --sh-glass: 0 8px 24px -4px rgb(0 0 0 / 0.5), 0 2px 6px -1px rgb(0 0 0 / 0.4);
+  --sh-pop: 0 20px 48px -12px rgb(0 0 0 / 0.8), 0 0 0 1px rgb(255 255 255 / 0.08);
+  --glow: 0 0 24px -4px rgb(37 99 235 / 0.45); /* used only on the primary action */
+  --glass-bg: rgb(19 22 38 / 0.72);
   --glass-border: var(--line);
   --scrim: rgb(2 3 10 / 0.66);
   --spot: rgb(96 165 250 / 0.10);
-  --bg-glow-1: rgb(37 99 235 / 0.18);
-  --bg-glow-2: rgb(30 58 138 / 0.14);
-  --bg-glow-3: rgb(30 41 59 / 0.18);
+  --bg-glow-1: rgb(37 99 235 / 0.20);
+  --bg-glow-2: rgb(79 70 229 / 0.15);
+  --bg-glow-3: rgb(30 41 59 / 0.22);
   --bg-sheen: rgb(255 255 255 / 0);
   --bg-dots: transparent;
-  --surface-alpha: 78%;
+  --surface-alpha: 70%;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -191,8 +191,7 @@
 }
 
 @layer components {
-  /* App chrome (sidebar, header, dialogs): a near-opaque panel. No backdrop blur — blur over scrolling content is the most expensive paint in the app. */
-  .session-card { border-left-color: hsl(var(--sh) 62% 56%); background: color-mix(in srgb, hsl(var(--sh) 70% 56%) 11%, color-mix(in srgb, var(--surface) 92%, transparent)); }
+  .session-card { border-left-color: hsl(var(--sh) 62% 56%); background: color-mix(in srgb, hsl(var(--sh) 70% 56%) 12%, color-mix(in srgb, var(--surface) 80%, transparent)); }
   .glass { background: var(--glass-bg); border: 1px solid var(--glass-border); box-shadow: var(--sh-glass); }
   /* Content surface: lightly translucent so the ambient background still shows through, no blur. */
   .surface { @apply rounded-card border border-line shadow-soft; background: color-mix(in srgb, var(--surface) var(--surface-alpha), transparent) }

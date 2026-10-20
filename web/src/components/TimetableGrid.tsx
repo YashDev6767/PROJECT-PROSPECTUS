@@ -52,10 +52,10 @@ export function TimetableGrid({ entries, dates, info, today, showBatch, onOpen }
   const cols = `${TIME_COL} ${laneCount.map((n) => `minmax(${single && n === 1 ? "0" : `${11 * n}rem`}, ${n}fr)`).join(" ")}`;
   const minW = `calc(${TIME_COL} + ${laneCount.reduce((a, n) => a + 11 * n, 0)}rem)`;
   return (
-    <div className="surface overflow-x-auto overscroll-x-contain" data-testid="timetable-scroll">
+    <div className="surface backdrop-blur-md overflow-x-auto overscroll-x-contain" data-testid="timetable-scroll">
       <div style={{ gridTemplateColumns: cols, minWidth: single && laneCount[0] === 1 ? undefined : minW }} className="grid">
         {/* header row */}
-        <div className="sticky left-0 z-20 border-b border-line bg-surface/95" />
+        <div className="sticky left-0 z-20 border-b border-line bg-surface/85 backdrop-blur-md" />
         {dates.map((d) => {
           const i = info[d]; const wd = isoWeekday(d);
           const off = i?.day ? !i.day.working : wd === 7;
@@ -73,7 +73,7 @@ export function TimetableGrid({ entries, dates, info, today, showBatch, onOpen }
             </div>);
         })}
         {/* time column */}
-        <div className="sticky left-0 z-10 bg-surface/95" style={{ height: bodyH }} aria-hidden>
+        <div className="sticky left-0 z-10 bg-surface/85 backdrop-blur-md" style={{ height: bodyH }} aria-hidden>
           {hoursList.map((h, k) => <span key={h} className="absolute right-2 -translate-y-1/2 text-xs tabular-nums text-fg-subtle" style={{ top: k * HOUR_PX, marginTop: k === 0 ? 8 : 0 }}>{String(h).padStart(2, "0")}:00</span>)}
         </div>
         {dates.map((d) => {

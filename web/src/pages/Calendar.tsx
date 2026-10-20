@@ -181,7 +181,7 @@ function Agenda({ data, writable, onEdit, onDelete }: { data: MonthData; writabl
   ].sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title));
   if (items.length === 0) return <EmptyState title="Nothing on the calendar this month">Use "Add entry" to record a holiday, event, exam period or deadline.</EmptyState>;
   return (
-    <ul className="divide-y divide-line rounded-card border border-line bg-surface shadow-soft">
+    <ul className="divide-y divide-line rounded-card border border-line bg-surface/75 backdrop-blur-md shadow-soft">
       {items.map((i) => (
         <li key={i.key} className="flex flex-wrap items-start justify-between gap-3 p-4">
           <div className="min-w-0 space-y-1">

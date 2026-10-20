@@ -17,7 +17,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div aria-live="polite" role="status" className="pointer-events-none fixed inset-x-0 bottom-20 z-[60] flex justify-center px-4 lg:bottom-6">
         {message && (
-          <p className="glass pop-in pointer-events-auto flex items-center gap-2 rounded-xl bg-surface/90 px-4 py-3 text-sm font-medium text-fg-2">
+          <p className="glass pop-in pointer-events-auto flex items-center gap-2 rounded-xl bg-surface/80 backdrop-blur-xl px-4 py-3 text-sm font-medium text-fg-2 shadow-lg border border-line/80">
             <CheckCircle2 className="size-4 text-ok" aria-hidden /> {message}
           </p>
         )}

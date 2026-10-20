@@ -5,7 +5,7 @@ import {
   dispatchReminders,
   getReminderAuditLog,
 } from "./reminders.js";
-import type { ScheduleItem } from "../domain/schedule.js";
+import type { ScheduleItem } from "./scheduleData.js";
 
 const makeItem = (date: string, key = `slot_${date}`, facultyName = "Prof. Turing"): ScheduleItem => ({
   key,

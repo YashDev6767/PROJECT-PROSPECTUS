@@ -65,7 +65,7 @@ export function Login() {
         <section aria-label="About Prospectus" className="hidden max-w-lg lg:block">
           <div className="relative mb-6 overflow-hidden rounded-2xl border border-line bg-surface/60 p-1 shadow-soft">
             <ChromaWaves
-              backgroundColor={"#ffffff"}
+              backgroundColor={resolved === "dark" ? "#0b0f19" : "#ffffff"}
               color="#2563eb"
               waveFrequency={0.2}
               waveAmplitude={0.3}

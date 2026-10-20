@@ -138,7 +138,7 @@ export function Overview() {
         return (
           <>
             {live && d.state && d.state.kind !== "ready" ? null : live ? (
-                <div className="surface flex flex-wrap items-center justify-between gap-3 p-4">
+                <div className="surface backdrop-blur-md flex flex-wrap items-center justify-between gap-3 p-4">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-fg-muted">
                     <span className="font-semibold text-fg">Overall status</span> <RiskBadge status={d.overall?.status ?? null} />
                     {d.overall?.worstSubject && d.overall.status !== "COMPLETE" && <span>decided by the worst subject: <Link className="-my-2.5 inline-block py-2.5 font-semibold text-accent-text underline underline-offset-2 hover:text-fg" to={`/subjects/${d.overall.worstSubject.id}`}>{d.overall.worstSubject.name}</Link> ({d.overall.worstSubject.batchName})</span>}

@@ -28,7 +28,7 @@ export function ButtonLink({ variant = "secondary", className, ...rest }: LinkPr
 /* ---------- Card ---------- */
 export function Card({ title, description, action, children, className, ...rest }: Omit<HTMLAttributes<HTMLElement>, "title"> & { title?: string; description?: string; action?: ReactNode }) {
   return (
-    <section className={cx("surface p-5 sm:p-6", className)} aria-label={title} {...rest}>
+    <section className={cx("surface backdrop-blur-md p-5 sm:p-6", className)} aria-label={title} {...rest}>
       {title && (
         <header className="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           <div className="min-w-0">
@@ -153,7 +153,7 @@ export const SampleBadge = () => <span title="Demonstration data — not real MS
 
 /* ---------- Table ---------- */
 export const tableClasses = {
-  wrap: "surface overflow-x-auto",
+  wrap: "surface backdrop-blur-md overflow-x-auto",
   table: "w-full min-w-[40rem] text-left text-sm [&_tbody_tr]:transition-colors [&_tbody_tr]:duration-[var(--dur-fast)] [&_tbody_tr:hover]:bg-surface-2 [&_tbody_tr:last-child_td]:border-b-0",
   /** Same as `table`, but on phones it shrinks to the screen (the page hides secondary columns there) instead of scrolling sideways. */
   tableFit: "w-full text-left text-sm md:min-w-[40rem] [&_tbody_tr]:transition-colors [&_tbody_tr]:duration-[var(--dur-fast)] [&_tbody_tr:hover]:bg-surface-2 [&_tbody_tr:last-child_td]:border-b-0",

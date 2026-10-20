@@ -17,7 +17,7 @@ const topicLabel = { completed: "Done", in_progress: "In progress", not_started:
 const signed = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(2)} h`;
 function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "danger" | "warn" | "good" }) {
   return (
-    <div className="surface px-4 py-3">
+    <div className="surface backdrop-blur-md px-4 py-3">
       <p className="text-xs font-medium text-fg-subtle">{label}</p>
       <p className={`mt-1 text-xl font-semibold tracking-tight tabular-nums ${tone === "danger" ? "text-danger" : tone === "warn" ? "text-warn" : "text-fg"}`}>{value}</p>
       {hint && <p className="mt-0.5 text-xs text-fg-subtle">{hint}</p>}
@@ -63,7 +63,7 @@ export function SubjectDetail() {
           const p = d.progress;
           return (
             <>
-              <div className="glass flex flex-wrap items-center justify-between gap-3 rounded-card px-5 py-4">
+              <div className="glass backdrop-blur-md flex flex-wrap items-center justify-between gap-3 rounded-card px-5 py-4">
                 <div>
                   <h1 className="flex flex-wrap items-center gap-2 text-xl font-semibold tracking-tight text-fg">{d.subject.name} <RiskBadge status={p.risk} /> {d.subject.isSample && <SampleBadge />}</h1>
                   <p className="text-sm text-fg-subtle">{d.subject.code} · {d.subject.batchName} · {trackLabels[d.subject.track]} · {campusName(d.subject.campusId)} · {d.subject.facultyName ?? "No faculty assigned"}</p>
@@ -74,7 +74,7 @@ export function SubjectDetail() {
                 </div>
               </div>
 
-              <section aria-label="Why this status" className={`rounded-card border p-4 ${headlineTone[p.risk]}`}>
+              <section aria-label="Why this status" className={`rounded-card border backdrop-blur-md p-4 ${headlineTone[p.risk]}`}>
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-fg">{(p.risk === "DANGER" || p.risk === "TIGHT") && <TriangleAlert className="size-4" aria-hidden />} Why: {p.headline}</h2>
                 {p.reasons.length > 0 && <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-fg-2">{p.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}
                 <p className="mt-3 text-xs text-fg-subtle">Status rule: buffer = available teaching hours ÷ remaining syllabus hours. On track ≥ {p.thresholds.onTrack.toFixed(2)} · Tight ≥ {p.thresholds.tight.toFixed(2)} · Danger below that · Complete when nothing remains. Low progress alone is not danger if the time left still covers the work.</p>

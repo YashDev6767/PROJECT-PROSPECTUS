@@ -92,6 +92,7 @@ suite("campus isolation (PostgreSQL)", () => {
       "GET /progression/subjects/:id", "GET /progression", "GET /reports", "GET /reports/export",
       "GET /semesters", "POST /semesters", "PATCH /semesters/:id", "POST /semesters/:id/activate", "POST /semesters/:id/deactivate", "DELETE /semesters/:id",
       "GET /session-logs/schedule", "GET /session-logs/pending", "GET /session-logs/carry-forward", "GET /session-logs", "GET /session-logs/:id", "POST /session-logs", "PATCH /session-logs/:id", "POST /session-logs/:id/review",
+      "GET /session-logs/reminders", "POST /session-logs/reminders/dispatch",
       "GET /student/portal",
       "GET /subjects", "GET /subjects/export.csv", "POST /subjects", "PATCH /subjects/:id", "DELETE /subjects/:id",
       "GET /subjects/:id/syllabus", "PUT /subjects/:id/syllabus", "GET /subjects/:id/syllabus/export.csv", "POST /subjects/:id/syllabus/import/preview", "POST /subjects/:id/syllabus/import",
@@ -109,13 +110,13 @@ suite("campus isolation (PostgreSQL)", () => {
       walk((prod as unknown as { router?: { stack: never[] }; _router?: { stack: never[] } })._router?.stack ?? (prod as unknown as { router: { stack: never[] } }).router.stack);
       return found;
     };
-    it("lists exactly the routes this matrix knows about (60), none unclassified", () => {
+    it("lists exactly the routes this matrix knows about (62), none unclassified", () => {
       const found = routes().sort();
       const known = [...campusScoped, ...publicRoutes].sort();
       expect(found.filter((r) => !known.includes(r)), "routes with no classification").toEqual([]);
       expect(known.filter((r) => !found.includes(r)), "classified routes that no longer exist").toEqual([]);
-      expect(found).toHaveLength(60);
-      expect(campusScoped.size).toBe(54);
+      expect(found).toHaveLength(62);
+      expect(campusScoped.size).toBe(56);
     });
   });
 

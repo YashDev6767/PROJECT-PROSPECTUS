@@ -62,7 +62,7 @@ export function ExamReadiness() {
     <div className="space-y-8">
       <PageHeader title="Exam Readiness" subtitle={`${campusName(campusId)} · remaining syllabus against the teaching time left before each exam`}
         actions={<ButtonLink to="/exams">Exam schedule</ButtonLink>} />
-      <div className="surface flex flex-wrap items-center justify-between gap-4 p-4 text-xs text-fg-muted">
+      <div className="surface backdrop-blur-md flex flex-wrap items-center justify-between gap-4 p-4 text-xs text-fg-muted">
         <p className="max-w-2xl text-sm leading-relaxed text-fg-muted">
           Readiness compares the syllabus hours still to cover with the scheduled teaching hours left before the exam starts (holidays, exam weeks and cancelled classes respected). It is a capacity check, not a prediction of marks, and it never invents a score.
         </p>

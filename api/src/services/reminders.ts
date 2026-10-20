@@ -1,6 +1,6 @@
 import { addDays, daysBetweenISO } from "../domain/dates.js";
 import { today } from "../domain/clock.js";
-import type { ScheduleItem } from "../domain/schedule.js";
+import type { ScheduleItem } from "./scheduleData.js";
 
 export type ReminderTier = "FACULTY_REMINDER" | "MANAGER_ESCALATION";
 

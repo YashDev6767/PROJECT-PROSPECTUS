@@ -18,7 +18,7 @@ export function SubjectRiskCard({ row, live }: { row: SubjectRow; live: boolean 
     : `${hoursText(row.hoursBehind)} behind plan${row.daysToExam != null ? ` with ${row.daysToExam} days to the exam` : ""}.`;
 
   return (
-    <article className={cx("lift cv-auto group relative flex min-w-0 flex-col gap-4 rounded-card border border-line bg-surface/70 p-4 pl-5 before:absolute before:inset-y-4 before:left-0 before:w-[3px] before:rounded-r-full",
+    <article className={cx("lift cv-auto group relative flex min-w-0 flex-col gap-4 rounded-card border border-line/80 bg-surface/75 backdrop-blur-md p-4 pl-5 shadow-soft before:absolute before:inset-y-4 before:left-0 before:w-[3px] before:rounded-r-full",
       severe ? "before:bg-danger" : "before:bg-warn")}>
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">

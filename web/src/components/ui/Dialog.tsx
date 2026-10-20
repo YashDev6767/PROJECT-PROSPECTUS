@@ -45,7 +45,7 @@ export function Dialog({ title, onClose, children, wide }: { title: string; onCl
     <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6">
       <div className={`absolute inset-0 bg-scrim ${leaving ? "scrim-out" : "scrim-in"}`} onClick={requestClose} aria-hidden />
       <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId}
-        className={`glass relative flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-t-card bg-surface/95 shadow-pop sm:max-h-[calc(100dvh-3rem)] sm:rounded-card ${leaving ? "dialog-out" : "dialog-in"} ${wide ? "sm:max-w-2xl" : "sm:max-w-lg"}`}>
+        className={`glass relative flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-t-card bg-surface/85 backdrop-blur-2xl shadow-pop sm:max-h-[calc(100dvh-3rem)] sm:rounded-card ${leaving ? "dialog-out" : "dialog-in"} ${wide ? "sm:max-w-2xl" : "sm:max-w-lg"}`}>
         <div className="flex shrink-0 items-start justify-between gap-4 border-b border-line px-5 py-3">
           <h2 id={titleId} className="pt-1.5 text-lg font-semibold tracking-tight text-fg">{title}</h2>
           <button type="button" onClick={requestClose} aria-label="Close dialog" className="-mr-2 grid size-10 place-items-center rounded-xl text-fg-subtle hover:bg-surface-3"><X className="size-5" /></button>

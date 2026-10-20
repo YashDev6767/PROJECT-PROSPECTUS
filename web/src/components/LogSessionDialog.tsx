@@ -222,7 +222,7 @@ function LogForm({ item, detail, existing, sameDayLogs, onClose, onSaved }: { it
         <p role="alert" className="rounded-xl border border-danger/30 bg-danger-soft p-3 text-sm text-danger">{(["subjectId", "heldOn", "timetableEntryId", "makeupOfId"] as const).map((k) => err[k]).filter(Boolean).join(" ")}</p>
       )}
       <SubmitFeedback state={s} />
-      <div className="sticky bottom-0 -mx-5 -mb-5 mt-5 flex justify-end gap-2 border-t border-line bg-surface/90 px-5 py-3 backdrop-blur">
+      <div className="sticky bottom-0 -mx-5 -mb-5 mt-5 flex justify-end gap-2 border-t border-line bg-surface/80 px-5 py-3 backdrop-blur-md">
         <Button onClick={onClose}>Cancel</Button>
         <Button type="submit" variant="primary" disabled={s.busy}><CheckCircle2 className="size-4" aria-hidden /> {s.busy ? "Saving…" : existing ? "Save correction" : "Save log"}</Button>
       </div>

@@ -26,7 +26,7 @@ export function syllabusRouter({ db }: Deps): Router {
     res.json(await payload(prisma, await subjectOr404(res, prisma, req.params.id!)));
   }));
 
-  r.put("/subjects/:id/syllabus", requireCapability("syllabus:write"), asyncHandler(async (req, res) => {
+  r.put("/subjects/:id/syllabus", requireCapability("academic:write"), asyncHandler(async (req, res) => {
     const b = parse(syllabusBody, req.body);
     failOnIssues(validateSyllabus(b.units).map((i) => ({ path: `${i.field}`, message: i.message })));
     const prisma = needDb(db);
@@ -42,7 +42,7 @@ export function syllabusRouter({ db }: Deps): Router {
   }));
 
   // Preview never writes. Row-level errors are returned for every bad row.
-  r.post("/subjects/:id/syllabus/import/preview", requireCapability("syllabus:write"), asyncHandler(async (req, res) => {
+  r.post("/subjects/:id/syllabus/import/preview", requireCapability("academic:write"), asyncHandler(async (req, res) => {
     const b = parse(csvBody, req.body);
     const prisma = needDb(db);
     const s = await subjectOr404(res, prisma, req.params.id!);
@@ -51,7 +51,7 @@ export function syllabusRouter({ db }: Deps): Router {
     res.json({ valid: result.errors.length === 0, rowCount: result.rowCount, errors: result.errors, units: result.units, totalPlannedHours: totalPlannedHours(result.units), existingTopicCount: existing });
   }));
 
-  r.post("/subjects/:id/syllabus/import", requireCapability("syllabus:write"), asyncHandler(async (req, res) => {
+  r.post("/subjects/:id/syllabus/import", requireCapability("academic:write"), asyncHandler(async (req, res) => {
     const b = parse(csvBody, req.body);
     const prisma = needDb(db);
     const s = await subjectOr404(res, prisma, req.params.id!);
